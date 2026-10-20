@@ -1,14 +1,21 @@
 /*
- * 数学公众号模板，用于 md.doocs.org 的「自定义 CSS」
+ * 数学公众号模板，用于 md.doocs.org 的「自定义 CSS」，与 index.html 里的主题相同
  * 写法：
- *   ## *1.1* 代数与比较函子
- *   :::definition 定义 1.1      绿色
- *   :::theorem 定理 2.2         蓝色（lemma / corollary / proposition 同色）
- *   :::remark 评注 1.2          灰色（其余类型都用灰色）
- *   ++定理 2.2++               交叉引用（金色虚线）
+ *   # *1* 单子                     一级标题
+ *   ## *1.1* 代数与比较函子         小节标题
+ *   :::theorem 定理 2.2            蓝色
+ *   :::proposition 命题 2.3        黄色
+ *   :::lemma 引理 2.4              青色（fact 同色）
+ *   :::corollary 推论 2.5          红色
+ *   :::definition 定义 2.6         绿色（axiom 同色）
+ *   :::example 例 2.7              橙色
+ *   :::question 问题 2.8           紫色
+ *   :::remark 评注 2.9             灰色（其余类型都用灰色）
+ *   :::proof 证明                  白底虚线框
+ *   ++定理 2.2++                   交叉引用（金色虚线）
+ * 自动编号、标题图标、链接转脚注是编辑器脚本做的，doocs 里没有。
  */
 
-/* 正文 */
 p, li {
   font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
   font-size: 16px;
@@ -16,18 +23,36 @@ p, li {
   letter-spacing: 0;
   color: #1f1f1f;
 }
-
-/* 小节标题 */
-h2 {
+h1 {
   display: block;
+  position: relative;
+  text-align: center;
   margin: 2.4em 0 1.4em;
-  padding: 0;
+  padding: 0 0 10px;
   border: 0;
+  border-bottom: 1px solid #dedee4;
   background: none;
-  text-align: left;
   font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
   font-size: 22px;
   font-weight: 900;
+  color: #1f1f1f;
+}
+h1 em {
+  margin-right: 0.45em;
+  font-style: normal;
+  font-family: -apple-system, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  color: #3557a1;
+}
+h2 {
+  display: block;
+  margin: 2em 0 0.9em;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.5;
   color: #1f1f1f;
 }
 h2 em {
@@ -36,19 +61,16 @@ h2 em {
   font-family: -apple-system, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
   color: #3557a1;
 }
-
-/* 卡片：灰色为默认，右下角渐隐网格 */
 blockquote.markdown-alert {
   margin: 2.2em 0;
   padding: 1px 20px 16px;
   border: 0;
-  border-left: 3px solid #4b5068;
   border-radius: 8px;
-  background-color: #f6f6f9;
+  background-color: #ededf2;
   background-image:
-    linear-gradient(to bottom right, #f6f6f9 30%, rgba(246, 246, 249, 0) 100%),
-    linear-gradient(rgba(75, 80, 104, 0.11) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(75, 80, 104, 0.11) 1px, transparent 1px);
+    linear-gradient(to bottom right, #ededf2 30%, rgba(75, 80, 104, 0) 100%),
+    linear-gradient(rgba(75, 80, 104, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(75, 80, 104, 0.10) 1px, #ededf2 1px);
   background-size: 100% 100%, 12px 12px, 12px 12px;
 }
 .markdown-alert > :not(.markdown-alert-title) {
@@ -56,11 +78,9 @@ blockquote.markdown-alert {
   letter-spacing: 0;
   color: #1f1f1f;
 }
-
-/* 左上角浮起的标签：左移盖住边框，上移 12px 探出卡片 */
 .markdown-alert .markdown-alert-title {
   display: table;
-  margin: -13px 0 14px -23px;
+  margin: -13px 0 14px -16px;
   padding: 6px 13px;
   border-radius: 8px;
   background: #e4e5eb;
@@ -72,50 +92,132 @@ blockquote.markdown-alert {
   letter-spacing: 1px;
   color: #5b6072;
 }
-.markdown-alert .markdown-alert-title svg {
-  display: none;
-}
-
-/* 绿色：定义 */
 blockquote.markdown-alert-definition,
 blockquote.markdown-alert-axiom {
-  border-left-color: #2f6b3b;
-  background-color: #f2f7f1;
+  background-color: #e6f2e4;
   background-image:
-    linear-gradient(to bottom right, #f2f7f1 30%, rgba(242, 247, 241, 0) 100%),
-    linear-gradient(rgba(47, 107, 59, 0.11) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(47, 107, 59, 0.11) 1px, transparent 1px);
+    linear-gradient(to bottom right, #e6f2e4 30%, rgba(47, 107, 59, 0) 100%),
+    linear-gradient(rgba(47, 107, 59, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(47, 107, 59, 0.10) 1px, #e6f2e4 1px);
 }
 .markdown-alert-definition .markdown-alert-title,
 .markdown-alert-axiom .markdown-alert-title {
   background: #dbeada;
   color: #2f7d3a;
 }
-
-/* 蓝色：定理 */
-blockquote.markdown-alert-theorem,
-blockquote.markdown-alert-lemma,
-blockquote.markdown-alert-corollary,
-blockquote.markdown-alert-proposition {
-  border-left-color: #3557a1;
-  background-color: #f1f4fa;
+blockquote.markdown-alert-theorem {
+  background-color: #e6ecf9;
   background-image:
-    linear-gradient(to bottom right, #f1f4fa 30%, rgba(241, 244, 250, 0) 100%),
-    linear-gradient(rgba(53, 87, 161, 0.11) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(53, 87, 161, 0.11) 1px, transparent 1px);
+    linear-gradient(to bottom right, #e6ecf9 30%, rgba(53, 87, 161, 0) 100%),
+    linear-gradient(rgba(53, 87, 161, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(53, 87, 161, 0.10) 1px, #e6ecf9 1px);
 }
-.markdown-alert-theorem .markdown-alert-title,
-.markdown-alert-lemma .markdown-alert-title,
-.markdown-alert-corollary .markdown-alert-title,
-.markdown-alert-proposition .markdown-alert-title {
+.markdown-alert-theorem .markdown-alert-title {
   background: #dde5f3;
   color: #3557a1;
 }
+blockquote.markdown-alert-lemma,
+blockquote.markdown-alert-fact {
+  background-color: #e3f2f1;
+  background-image:
+    linear-gradient(to bottom right, #e3f2f1 30%, rgba(14, 111, 106, 0) 100%),
+    linear-gradient(rgba(14, 111, 106, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 111, 106, 0.10) 1px, #e3f2f1 1px);
+}
+.markdown-alert-lemma .markdown-alert-title,
+.markdown-alert-fact .markdown-alert-title {
+  background: #d0e9e6;
+  color: #0e6f6a;
+}
+blockquote.markdown-alert-proposition {
+  background-color: #faf5dc;
+  background-image:
+    linear-gradient(to bottom right, #faf5dc 30%, rgba(138, 106, 18, 0) 100%),
+    linear-gradient(rgba(138, 106, 18, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(138, 106, 18, 0.10) 1px, #faf5dc 1px);
+}
+.markdown-alert-proposition .markdown-alert-title {
+  background: #f1e5b8;
+  color: #8a6a12;
+}
+blockquote.markdown-alert-corollary {
+  background-color: #fbeceb;
+  background-image:
+    linear-gradient(to bottom right, #fbeceb 30%, rgba(176, 58, 46, 0) 100%),
+    linear-gradient(rgba(176, 58, 46, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(176, 58, 46, 0.10) 1px, #fbeceb 1px);
+}
+.markdown-alert-corollary .markdown-alert-title {
+  background: #f6d5d1;
+  color: #b03a2e;
+}
 
-/* 交叉引用 */
+/* 证明：白底 + 灰色虚线圆角框，标签是白色小牌骑在左上边框上 */
+blockquote.markdown-alert-proof {
+  padding: 1px 20px 18px;
+  border: 1px dashed #c8cad3;
+  border-radius: 10px;
+  background-color: #ffffff;
+  background-image: linear-gradient(#ffffff, #ffffff);
+  background-size: 100% 100%;
+}
+.markdown-alert-proof .markdown-alert-title {
+  display: table;
+  margin: -16px 0 16px -16px;
+  padding: 6px 15px 7px;
+  border: 1px solid #dcdde4;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(20, 24, 40, 0.07);
+  font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
+  font-size: 15px;
+  font-weight: bold;
+  line-height: 1.35;
+  letter-spacing: 2px;
+  color: #2b2c33;
+}
+
+strong, b {
+  font-weight: 700;
+  -webkit-text-stroke: 0.6px currentColor;
+}
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.2em auto;
+}
+blockquote.markdown-alert-example {
+  background-color: #fdf2e2;
+  background-image:
+    linear-gradient(to bottom right, #fdf2e2 30%, rgba(161, 90, 18, 0) 100%),
+    linear-gradient(rgba(161, 90, 18, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(161, 90, 18, 0.10) 1px, #fdf2e2 1px);
+  background-size: 100% 100%, 12px 12px, 12px 12px;
+}
+.markdown-alert-example .markdown-alert-title {
+  background: #f8e3c6;
+  color: #a15a12;
+}
+blockquote.markdown-alert-question {
+  background-color: #f5f3fc;
+  background-image:
+    linear-gradient(to bottom right, #f5f3fc 30%, rgba(90, 75, 158, 0) 100%),
+    linear-gradient(rgba(90, 75, 158, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(90, 75, 158, 0.10) 1px, #f5f3fc 1px);
+  background-size: 100% 100%, 12px 12px, 12px 12px;
+}
+.markdown-alert-question .markdown-alert-title {
+  background: #e3dff7;
+  color: #5a4b9e;
+}
+
 .markup-underline {
   text-decoration: none;
   border-bottom: 1px dotted #a8842a;
   white-space: nowrap;
   color: #a8842a;
+}
+.markdown-alert .markdown-alert-title svg {
+  display: none;
 }

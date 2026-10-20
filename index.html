@@ -25,16 +25,36 @@ p, li {
   letter-spacing: 0;
   color: #1f1f1f;
 }
-h2 {
+h1 {
   display: block;
+  position: relative;
+  text-align: center;
   margin: 2.4em 0 1.4em;
-  padding: 0;
+  padding: 0 0 10px;
   border: 0;
+  border-bottom: 1px solid #dedee4;
   background: none;
-  text-align: left;
   font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
   font-size: 22px;
   font-weight: 900;
+  color: #1f1f1f;
+}
+h1 em {
+  margin-right: 0.45em;
+  font-style: normal;
+  font-family: -apple-system, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  color: #3557a1;
+}
+h2 {
+  display: block;
+  margin: 2em 0 0.9em;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.5;
   color: #1f1f1f;
 }
 h2 em {
@@ -43,17 +63,16 @@ h2 em {
   font-family: -apple-system, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
   color: #3557a1;
 }
-blockquote.markdown-alert {
+.markdown-alert {
   margin: 2.2em 0;
   padding: 1px 20px 16px;
   border: 0;
-  border-left: 3px solid #4b5068;
   border-radius: 8px;
-  background-color: #f6f6f9;
+  background-color: #ededf2;
   background-image:
-    linear-gradient(to bottom right, #f6f6f9 30%, rgba(246, 246, 249, 0) 100%),
-    linear-gradient(rgba(75, 80, 104, 0.11) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(75, 80, 104, 0.11) 1px, transparent 1px);
+    linear-gradient(to bottom right, #ededf2 30%, rgba(75, 80, 104, 0) 100%),
+    linear-gradient(rgba(75, 80, 104, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(75, 80, 104, 0.10) 1px, #ededf2 1px);
   background-size: 100% 100%, 12px 12px, 12px 12px;
 }
 .markdown-alert > :not(.markdown-alert-title) {
@@ -63,7 +82,7 @@ blockquote.markdown-alert {
 }
 .markdown-alert .markdown-alert-title {
   display: table;
-  margin: -13px 0 14px -23px;
+  margin: -13px 0 14px -16px;
   padding: 6px 13px;
   border-radius: 8px;
   background: #e4e5eb;
@@ -75,38 +94,126 @@ blockquote.markdown-alert {
   letter-spacing: 1px;
   color: #5b6072;
 }
-blockquote.markdown-alert-definition,
-blockquote.markdown-alert-axiom {
-  border-left-color: #2f6b3b;
-  background-color: #f2f7f1;
+.markdown-alert-definition,
+.markdown-alert-axiom {
+  background-color: #e6f2e4;
   background-image:
-    linear-gradient(to bottom right, #f2f7f1 30%, rgba(242, 247, 241, 0) 100%),
-    linear-gradient(rgba(47, 107, 59, 0.11) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(47, 107, 59, 0.11) 1px, transparent 1px);
+    linear-gradient(to bottom right, #e6f2e4 30%, rgba(47, 107, 59, 0) 100%),
+    linear-gradient(rgba(47, 107, 59, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(47, 107, 59, 0.10) 1px, #e6f2e4 1px);
 }
 .markdown-alert-definition .markdown-alert-title,
 .markdown-alert-axiom .markdown-alert-title {
   background: #dbeada;
   color: #2f7d3a;
 }
-blockquote.markdown-alert-theorem,
-blockquote.markdown-alert-lemma,
-blockquote.markdown-alert-corollary,
-blockquote.markdown-alert-proposition {
-  border-left-color: #3557a1;
-  background-color: #f1f4fa;
+.markdown-alert-theorem {
+  background-color: #e6ecf9;
   background-image:
-    linear-gradient(to bottom right, #f1f4fa 30%, rgba(241, 244, 250, 0) 100%),
-    linear-gradient(rgba(53, 87, 161, 0.11) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(53, 87, 161, 0.11) 1px, transparent 1px);
+    linear-gradient(to bottom right, #e6ecf9 30%, rgba(53, 87, 161, 0) 100%),
+    linear-gradient(rgba(53, 87, 161, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(53, 87, 161, 0.10) 1px, #e6ecf9 1px);
 }
-.markdown-alert-theorem .markdown-alert-title,
-.markdown-alert-lemma .markdown-alert-title,
-.markdown-alert-corollary .markdown-alert-title,
-.markdown-alert-proposition .markdown-alert-title {
+.markdown-alert-theorem .markdown-alert-title {
   background: #dde5f3;
   color: #3557a1;
 }
+.markdown-alert-lemma,
+.markdown-alert-fact {
+  background-color: #e3f2f1;
+  background-image:
+    linear-gradient(to bottom right, #e3f2f1 30%, rgba(14, 111, 106, 0) 100%),
+    linear-gradient(rgba(14, 111, 106, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 111, 106, 0.10) 1px, #e3f2f1 1px);
+}
+.markdown-alert-lemma .markdown-alert-title,
+.markdown-alert-fact .markdown-alert-title {
+  background: #d0e9e6;
+  color: #0e6f6a;
+}
+.markdown-alert-proposition {
+  background-color: #faf5dc;
+  background-image:
+    linear-gradient(to bottom right, #faf5dc 30%, rgba(138, 106, 18, 0) 100%),
+    linear-gradient(rgba(138, 106, 18, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(138, 106, 18, 0.10) 1px, #faf5dc 1px);
+}
+.markdown-alert-proposition .markdown-alert-title {
+  background: #f1e5b8;
+  color: #8a6a12;
+}
+.markdown-alert-corollary {
+  background-color: #fbeceb;
+  background-image:
+    linear-gradient(to bottom right, #fbeceb 30%, rgba(176, 58, 46, 0) 100%),
+    linear-gradient(rgba(176, 58, 46, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(176, 58, 46, 0.10) 1px, #fbeceb 1px);
+}
+.markdown-alert-corollary .markdown-alert-title {
+  background: #f6d5d1;
+  color: #b03a2e;
+}
+
+/* 证明：白底 + 灰色虚线圆角框，标签是白色小牌骑在左上边框上 */
+.markdown-alert-proof {
+  padding: 1px 20px 18px;
+  border: 1px dashed #c8cad3;
+  border-radius: 10px;
+  background-color: #ffffff;
+  background-image: linear-gradient(#ffffff, #ffffff);
+  background-size: 100% 100%;
+}
+.markdown-alert-proof .markdown-alert-title {
+  display: table;
+  margin: -16px 0 16px -16px;
+  padding: 6px 15px 7px;
+  border: 1px solid #dcdde4;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(20, 24, 40, 0.07);
+  font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
+  font-size: 15px;
+  font-weight: bold;
+  line-height: 1.35;
+  letter-spacing: 2px;
+  color: #2b2c33;
+}
+
+strong, b {
+  font-weight: 700;
+  -webkit-text-stroke: 0.6px currentColor;
+}
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.2em auto;
+}
+.markdown-alert-example {
+  background-color: #fdf2e2;
+  background-image:
+    linear-gradient(to bottom right, #fdf2e2 30%, rgba(161, 90, 18, 0) 100%),
+    linear-gradient(rgba(161, 90, 18, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(161, 90, 18, 0.10) 1px, #fdf2e2 1px);
+  background-size: 100% 100%, 12px 12px, 12px 12px;
+}
+.markdown-alert-example .markdown-alert-title {
+  background: #f8e3c6;
+  color: #a15a12;
+}
+.markdown-alert-question {
+  background-color: #f5f3fc;
+  background-image:
+    linear-gradient(to bottom right, #f5f3fc 30%, rgba(90, 75, 158, 0) 100%),
+    linear-gradient(rgba(90, 75, 158, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(90, 75, 158, 0.10) 1px, #f5f3fc 1px);
+  background-size: 100% 100%, 12px 12px, 12px 12px;
+}
+.markdown-alert-question .markdown-alert-title {
+  background: #e3dff7;
+  color: #5a4b9e;
+}
+
 .markup-underline {
   text-decoration: none;
   border-bottom: 1px dotted #a8842a;
@@ -121,6 +228,7 @@ blockquote.markdown-alert-proposition {
 </head>
 <body>
 <div id="bar">
+  <button id="conv" title="把「> **定理** …」式的旧稿转成本编辑器的 ::: 语法">旧稿转换</button>
   <button id="wx">复制到公众号</button>
   <button id="zh">复制到知乎</button>
   <span id="msg"></span>
@@ -131,6 +239,8 @@ blockquote.markdown-alert-proposition {
 </main>
 
 <script>
+const WHEEL = '<svg width="21" height="23" viewBox="0 0 292 315" fill="#1a3a8f"><path d="M194 0h16v3h-16zM184 3h34v3h-34zM180 6h44v3h-44zM176 9h52v3h-52zM174 12h56v3h-56zM170 15h62v3h-62zM168 18h65v3h-65zM168 21h68v3h-68zM166 24h70v3h-70zM166 27h72v3h-72zM164 30h73v3h-73zM164 33h75v3h-75zM164 36h75v3h-75zM164 39h75v3h-75zM164 42h73v3h-73zM164 45h73v3h-73zM166 48h71v3h-71zM168 51h67v3h-67zM168 54h66v3h-66zM170 57h62v3h-62zM62 60h56v3h-56zM172 60h57v3h-57zM58 63h109v3h-109zM176 63h51v3h-51zM54 66h169v3h-169zM52 69h167v3h-167zM48 72h141v3h-141zM190 72h20v3h-20zM44 75h147v3h-147zM40 78h153v3h-153zM36 81h159v3h-159zM32 84h164v3h-164zM28 87h170v3h-170zM26 90h175v3h-175zM22 93h180v3h-180zM18 96h56v3h-56zM108 96h96v3h-96zM14 99h56v3h-56zM116 99h89v3h-89zM10 102h56v3h-56zM114 102h93v3h-93zM6 105h56v3h-56zM114 105h96v3h-96zM4 108h54v3h-54zM112 108h100v3h-100zM4 111h52v3h-52zM110 111h103v3h-103zM2 114h49v3h-49zM108 114h106v3h-106zM2 117h45v3h-45zM106 117h110v3h-110zM2 120h41v3h-41zM106 120h113v3h-113zM4 123h36v3h-36zM104 123h117v3h-117zM6 126h31v3h-31zM80 126h5v3h-5zM102 126h121v3h-121zM224 126h57v3h-57zM8 129h25v3h-25zM68 129h17v3h-17zM100 129h75v3h-75zM180 129h107v3h-107zM10 132h18v3h-18zM62 132h22v3h-22zM98 132h76v3h-76zM180 132h109v3h-109zM54 135h28v3h-28zM98 135h75v3h-75zM184 135h108v3h-108zM50 138h31v3h-31zM96 138h76v3h-76zM184 138h107v3h-107zM44 141h36v3h-36zM94 141h76v3h-76zM188 141h104v3h-104zM40 144h38v3h-38zM92 144h75v3h-75zM188 144h103v3h-103zM36 147h40v3h-40zM90 147h76v3h-76zM192 147h100v3h-100zM32 150h43v3h-43zM88 150h76v3h-76zM194 150h97v3h-97zM30 153h45v3h-45zM88 153h76v3h-76zM196 153h93v3h-93zM26 156h46v3h-46zM86 156h75v3h-75zM200 156h86v3h-86zM24 159h42v3h-42zM84 159h75v3h-75zM22 162h39v3h-39zM84 162h73v3h-73zM18 165h38v3h-38zM84 165h71v3h-71zM16 168h36v3h-36zM84 168h70v3h-70zM14 171h35v3h-35zM84 171h127v3h-127zM12 174h34v3h-34zM86 174h129v3h-129zM12 177h32v3h-32zM88 177h130v3h-130zM10 180h32v3h-32zM88 180h131v3h-131zM8 183h32v3h-32zM90 183h130v3h-130zM6 186h31v3h-31zM92 186h130v3h-130zM6 189h30v3h-30zM94 189h130v3h-130zM4 192h30v3h-30zM96 192h130v3h-130zM4 195h29v3h-29zM98 195h130v3h-130zM2 198h29v3h-29zM98 198h130v3h-130zM2 201h28v3h-28zM102 201h128v3h-128zM2 204h28v3h-28zM188 204h44v3h-44zM0 207h28v3h-28zM188 207h45v3h-45zM0 210h27v3h-27zM190 210h44v3h-44zM0 213h28v3h-28zM192 213h44v3h-44zM0 216h28v3h-28zM176 216h2v3h-2zM194 216h44v3h-44zM0 219h28v3h-28zM172 219h8v3h-8zM194 219h44v3h-44zM0 222h28v3h-28zM166 222h14v3h-14zM196 222h44v3h-44zM0 225h28v3h-28zM162 225h21v3h-21zM198 225h43v3h-43zM0 228h28v3h-28zM158 228h26v3h-26zM200 228h43v3h-43zM0 231h28v3h-28zM156 231h28v3h-28zM200 231h45v3h-45zM0 234h28v3h-28zM156 234h28v3h-28zM202 234h44v3h-44zM0 237h28v3h-28zM154 237h29v3h-29zM204 237h44v3h-44zM0 240h29v3h-29zM154 240h29v3h-29zM206 240h44v3h-44zM2 243h29v3h-29zM152 243h29v3h-29zM208 243h43v3h-43zM2 246h29v3h-29zM152 246h29v3h-29zM210 246h43v3h-43zM2 249h30v3h-30zM150 249h29v3h-29zM210 249h44v3h-44zM4 252h31v3h-31zM150 252h30v3h-30zM212 252h43v3h-43zM4 255h31v3h-31zM148 255h31v3h-31zM214 255h43v3h-43zM6 258h31v3h-31zM146 258h31v3h-31zM216 258h43v3h-43zM8 261h32v3h-32zM144 261h32v3h-32zM218 261h42v3h-42zM8 264h34v3h-34zM142 264h33v3h-33zM218 264h43v3h-43zM10 267h34v3h-34zM138 267h34v3h-34zM220 267h42v3h-42zM12 270h37v3h-37zM136 270h35v3h-35zM222 270h42v3h-42zM14 273h38v3h-38zM132 273h37v3h-37zM224 273h42v3h-42zM16 276h40v3h-40zM128 276h39v3h-39zM224 276h42v3h-42zM18 279h42v3h-42zM124 279h41v3h-41zM226 279h41v3h-41zM20 282h47v3h-47zM118 282h45v3h-45zM228 282h39v3h-39zM24 285h52v3h-52zM110 285h50v3h-50zM230 285h36v3h-36zM26 288h130v3h-130zM232 288h32v3h-32zM30 291h124v3h-124zM234 291h26v3h-26zM32 294h117v3h-117zM36 297h109v3h-109zM40 300h100v3h-100zM46 303h88v3h-88zM52 306h75v3h-75zM60 309h62v3h-62zM72 312h38v3h-38z"/></svg>'
+
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 // 语法与 md.doocs.org 一致：$..$  $$..$$  :::类型 标题 ... :::  ++引用++
@@ -166,7 +276,9 @@ marked.use({ extensions: [
       return t
     },
     renderer(t) {
-      return `<blockquote class="markdown-alert markdown-alert-${esc(t.kind)}"><p class="markdown-alert-title"><strong>${esc(t.title)}</strong></p>${this.parser.parse(t.tokens)}</blockquote>`
+      const noNum = /!$/.test(t.kind)
+      const kind = t.kind.replace(/!$/, '')
+      return `<section class="markdown-alert markdown-alert-${esc(kind)}${noNum ? ' ma-nonum' : ''}"><p class="markdown-alert-title"><strong>${esc(t.title)}</strong></p>${this.parser.parse(t.tokens)}</section>`
     } },
 ]})
 
@@ -185,6 +297,92 @@ function svg(tex, display) {
 const rules = [...document.getElementById('theme').sheet.cssRules]
 const src = document.getElementById('src'), view = document.getElementById('view')
 
+// 计数器：按一级标题分组，所有卡片共享一个序列，证明不占号
+// 没有一级标题的稿子保留手写编号；正文 ++…++ 里的旧编号换成新编号
+function numbering(root = view) {
+  if (!root.querySelector(':scope > h1')) return
+  let sec = 0, cnt = 0
+  const map = {}
+  for (const el of root.children) {
+    if (el.tagName === 'H1') {
+      sec++; cnt = 0
+      const em = el.querySelector('em')
+      if (em) em.textContent = String(sec)
+      continue
+    }
+    if (!el.classList.contains('markdown-alert')) continue
+    if (el.classList.contains('markdown-alert-proof')) continue
+    if (el.classList.contains('ma-nonum')) continue
+    cnt++
+    const t = el.querySelector('.markdown-alert-title')
+    if (!t) continue
+    const s = t.querySelector('strong') || t
+    const num = (sec || 1) + '.' + cnt
+    const old = /\d+\s*[.．]\s*\d+/.exec(s.textContent)
+    if (old) map[old[0]] ??= num
+    const raw = s.textContent.replace(/\d+\s*[.．]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
+    const i = raw.search(/[（(]/)
+    const head = i < 0 ? raw : raw.slice(0, i).trim()
+    const tail = i < 0 ? '' : raw.slice(i)
+    s.textContent = head + ' ' + num + tail
+  }
+  root.querySelectorAll('.markup-underline').forEach(u => {
+    for (const n of u.childNodes) if (n.nodeType === 3) n.data = n.data.replace(/\d+\s*[.．]\s*\d+/g, k => map[k] || k)
+  })
+}
+
+// 一级标题内部拆成三段 inline-block：左图标 / 居中标题 / 右图标。
+// 不用 table：微信编辑器会重建表格（加边框、把编号和标题拆成两行）。
+// 不用 position/float/flex：微信会剥掉，图标退回文字旁边。
+function layoutHeadings() {
+  const CELL = 'display:inline-block;vertical-align:middle;'
+  view.querySelectorAll('h1').forEach(h => {
+    const c = h.cloneNode(true)
+    const found = [...c.querySelectorAll(':scope > svg')]   // 公式的 svg 包在 span 里，不算图标
+    found.forEach(s => s.remove())
+    const L = found[0] ? found[0].outerHTML.replace(/ style="[^"]*"/, '') : WHEEL
+    const R = found[1] ? found[1].outerHTML.replace(/ style="[^"]*"/, '') : WHEEL
+    const mid = c.innerHTML.trim()
+    h.innerHTML =
+      '<span style="' + CELL + 'width:10%;text-align:left">' + L + '</span>' +
+      '<span style="' + CELL + 'width:80%;text-align:center">' + mid + '</span>' +
+      '<span style="' + CELL + 'width:10%;text-align:right">' + R + '</span>'
+  })
+}
+
+// 超链接 → 脚注
+// 微信会把 <a> 剥掉，只留下文字和一段裸 URL（就成了"博客(https://…)"那种残骸）。
+// 所以正文里只留「文字[1]」，所有地址统一收到文末的「参考资料」。
+function footnotes() {
+  const as = [...view.querySelectorAll('a[href]')]
+  if (!as.length) return
+
+  const refs = []
+  as.forEach((a, i) => {
+    const n = i + 1
+    refs.push({ n: n, href: a.getAttribute('href') })
+    const sup = document.createElement('sup')
+    sup.setAttribute('style', 'font-size:11px;line-height:0;color:#2f8f8f;vertical-align:3px;')
+    sup.textContent = '[' + n + ']'
+    a.replaceWith(document.createTextNode(a.textContent), sup)
+  })
+
+  const F = 'font-family:"Source Han Serif SC","Noto Serif SC","Songti SC",STSong,SimSun,serif;'
+
+  const h = document.createElement('h2')
+  h.setAttribute('style', 'margin:2.6em 0 1em;padding:0;border:0;font-size:20px;font-weight:bold;line-height:1.5;color:#1f1f1f;font-family:-apple-system,"PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif;')
+  h.textContent = '参考资料'
+  view.appendChild(h)
+
+  refs.forEach(r => {
+    const p = document.createElement('p')
+    p.setAttribute('style', 'margin:0 0 8px;font-size:14px;line-height:1.95;color:#1f1f1f;' + F)
+    p.innerHTML = '<span style="color:#a3a3a3">[' + r.n + ']</span>　　链接：' +
+                  '<span style="font-style:italic;color:#6f6f6f">' + esc(r.href) + '</span>'
+    view.appendChild(p)
+  })
+}
+
 function render() {
   view.innerHTML = marked.parse(src.value)
   view.querySelectorAll('.math').forEach(m => {
@@ -192,8 +390,11 @@ function render() {
       ? `<section style="margin:1em 0;text-align:center;overflow-x:auto">${svg(m.textContent, true)}</section>`
       : `<span>${svg(m.textContent, false)}</span>`
   })
+  numbering()
   // 按源码顺序写进 style 属性，后写的覆盖先写的
   for (const r of rules) view.querySelectorAll(r.selectorText).forEach(el => { el.style.cssText += r.style.cssText })
+  footnotes()
+  layoutHeadings()
 }
 
 // 知乎会过滤所有样式，只保留结构；公式换成知乎自己的公式图片，行间公式末尾加 \\
@@ -209,7 +410,14 @@ function zhihu() {
     if (m.dataset.display) { const p = body.ownerDocument.createElement('p'); p.append(img); m.replaceWith(p) }
     else m.replaceWith(img)
   })
-  body.querySelectorAll('h2 em').forEach(e => e.replaceWith(e.textContent))
+  numbering(body)
+  // 知乎不认 section，卡片换回引用块
+  body.querySelectorAll('section.markdown-alert').forEach(s => {
+    const q = body.ownerDocument.createElement('blockquote')
+    q.append(...s.childNodes)
+    s.replaceWith(q)
+  })
+  body.querySelectorAll('h1 em, h2 em').forEach(e => e.replaceWith(e.textContent))
   return body.innerHTML
 }
 
@@ -223,6 +431,122 @@ function copy(html, label) {
   const msg = document.getElementById('msg')
   msg.textContent = `已复制，去${label}编辑器粘贴`
   setTimeout(() => msg.textContent = '', 3000)
+}
+
+// 旧稿 → 本编辑器语法
+// 旧稿（markdown-writing-style）：定理/定义等写成 「> **定理** 正文」引用块，
+// 块内行间公式独占一行（可能写成 ">$$…$$"），证明是块外普通正文、以 $\square$ 收尾，
+// 标题用 #/##/### 且不带编号，原样保留。
+// 没有可转换的块时原文返回，所以对 ::: 稿子是空操作。
+function convertLegacy(text) {
+  const KIND = {
+    定理: 'theorem', 命题: 'proposition', 引理: 'lemma', 推论: 'corollary',
+    结论: 'corollary', 定义: 'definition', 公理: 'axiom', 事实: 'fact',
+    评注: 'remark', 注: 'remark', 例子: 'example', 例: 'example', 习题: 'example',
+    问题: 'question', 疑问: 'question'
+  }
+  const lines = text.replace(/\r\n?/g, '\n').split('\n')
+  const out = []
+  let i = 0, hits = 0
+
+  while (i < lines.length) {
+    const line = lines[i]
+
+    if (/^>/.test(line)) {
+      const raw = [], buf = []
+      while (i < lines.length && /^>/.test(lines[i])) {
+        raw.push(lines[i])
+        buf.push(lines[i].replace(/^>[ \t]?/, ''))
+        i++
+      }
+      const m = /^\*\*([^*]+?)\*\*[ \t]*([\s\S]*)$/.exec(buf[0] || '')
+      // 加粗里可能带编号或副标题：「例 1」「定理（Chevalley）」「引理的证明」
+      let key = m ? m[1].trim() : ''
+      let sub = ''
+      const pm0 = /[（(]/.exec(key)
+      if (pm0) { sub = key.slice(pm0.index).trim(); key = key.slice(0, pm0.index).trim() }
+      key = key.replace(/[\s\d.]+$/, '').trim()
+      // 容错：卡片与它的行间公式之间被真空行（而不是 ">"）隔开时，
+      // 把后续那段"首行不是 **词**"的引用块并回同一张卡片。
+      if (key && KIND[key]) {
+        for (;;) {
+          let k = i
+          while (k < lines.length && lines[k].trim() === '') k++
+          if (k < lines.length && /^>/.test(lines[k]) &&
+              !/^\*\*[^*]+?\*\*/.test(lines[k].replace(/^>[ \t]?/, ''))) {
+            if (buf.length && buf[buf.length - 1].trim() !== '') buf.push('')
+            while (k < lines.length && /^>/.test(lines[k])) {
+              buf.push(lines[k].replace(/^>[ \t]?/, ''))
+              k++
+            }
+            i = k
+          } else break
+        }
+      }
+      while (buf.length && !buf[0].trim()) buf.shift()
+      while (buf.length && !buf[buf.length - 1].trim()) buf.pop()
+
+      let rest = m ? m[2].trim() : ''
+      // 加粗外紧跟的副标题：「**定理**（Chevalley）设 …」
+      if (!sub && /^[（(][^）)]{1,40}[）)]/.test(rest)) {
+        const pm1 = /^[（(][^）)]{1,40}[）)]/.exec(rest)
+        sub = pm1[0]
+        rest = rest.slice(sub.length).trim()
+      }
+      const isProof = /证明$/.test(key)
+      if (isProof || (key && KIND[key])) {
+        hits++
+        out.push(':::' + (isProof ? 'proof' : KIND[key]) + ' ' + key + sub)
+        if (rest) out.push(rest)
+        for (const b of buf.slice(1)) out.push(b)
+        out.push(':::')
+      } else {
+        for (const r of raw) out.push(r)   // 不是卡片，原样保留
+      }
+      out.push('')
+      continue
+    }
+
+    const pm = /^\*\*([^*]*证明)[：:]?\*\*[ \t]*(.*)$/.exec(line)
+    if (pm) {
+      hits++
+      out.push(':::proof ' + pm[1].trim())
+      const first = pm[2].trim()
+      if (first) out.push(first)
+      i++
+      const done = first.indexOf('$\\square$') >= 0
+      while (!done && i < lines.length) {
+        const L = lines[i]
+        if (/^#{1,6}[ \t]/.test(L) || /^>/.test(L) || /^:::/.test(L)) break
+        if (L.indexOf('$\\square$') >= 0) { if (L.trim()) out.push(L); i++; break }
+        out.push(L)
+        i++
+      }
+      while (out.length && out[out.length - 1].trim() === '') out.pop()
+      out.push(':::', '')
+      continue
+    }
+
+    out.push(line)
+    i++
+  }
+
+  if (!hits) return text
+  const res = []
+  for (const l of out) if (!(l === '' && res[res.length - 1] === '')) res.push(l)
+  return res.join('\n').trim() + '\n'
+}
+
+document.getElementById('conv').onclick = () => {
+  const before = src.value
+  const after = convertLegacy(before)
+  src.value = after
+  try { localStorage.setItem('draft', after) } catch {}
+  render()
+  const blocks = s => (s.match(/^:::/gm) || []).length / 2
+  const n = blocks(after) - blocks(before)
+  document.getElementById('msg').textContent =
+    before === after ? '没有可转换的旧稿结构' : '已转换 ' + n + ' 个块'
 }
 
 document.getElementById('wx').onclick = () => copy(view.innerHTML, '公众号')
