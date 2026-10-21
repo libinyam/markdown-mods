@@ -153,13 +153,13 @@ blockquote.markdown-alert-corollary {
 }
 
 /* 证明：白底 + 灰色虚线圆角框，标签是白色小牌骑在左上边框上 */
+/* 不能用 linear-gradient(#fff,#fff) 防反色：微信深色模式照样把渐变转黑，却按原白底算字色，字就黑底黑字了 */
 blockquote.markdown-alert-proof {
   padding: 1px 20px 18px;
   border: 1px dashed #c8cad3;
   border-radius: 10px;
   background-color: #ffffff;
-  background-image: linear-gradient(#ffffff, #ffffff);
-  background-size: 100% 100%;
+  background-image: none;
 }
 .markdown-alert-proof .markdown-alert-title {
   display: table;
