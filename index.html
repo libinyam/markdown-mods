@@ -228,7 +228,7 @@ img {
 </head>
 <body>
 <div id="bar">
-  <button id="conv" title="把「> **定理** …」式的旧稿转成本编辑器的 ::: 语法">旧稿转换</button>
+  <button id="conv" title="识别纯文本稿和「> **定理** …」式旧稿里的章节、定义、定理、证明，转成本编辑器的语法">应用主题</button>
   <button id="wx">复制到公众号</button>
   <button id="zh">复制到知乎</button>
   <span id="msg"></span>
@@ -433,18 +433,19 @@ function copy(html, label) {
   setTimeout(() => msg.textContent = '', 3000)
 }
 
+const KIND = {
+  定理: 'theorem', 命题: 'proposition', 引理: 'lemma', 推论: 'corollary',
+  结论: 'corollary', 定义: 'definition', 公理: 'axiom', 事实: 'fact',
+  评注: 'remark', 注: 'remark', 例子: 'example', 例: 'example', 习题: 'example',
+  问题: 'question', 疑问: 'question'
+}
+
 // 旧稿 → 本编辑器语法
 // 旧稿（markdown-writing-style）：定理/定义等写成 「> **定理** 正文」引用块，
 // 块内行间公式独占一行（可能写成 ">$$…$$"），证明是块外普通正文、以 $\square$ 收尾，
 // 标题用 #/##/### 且不带编号，原样保留。
 // 没有可转换的块时原文返回，所以对 ::: 稿子是空操作。
 function convertLegacy(text) {
-  const KIND = {
-    定理: 'theorem', 命题: 'proposition', 引理: 'lemma', 推论: 'corollary',
-    结论: 'corollary', 定义: 'definition', 公理: 'axiom', 事实: 'fact',
-    评注: 'remark', 注: 'remark', 例子: 'example', 例: 'example', 习题: 'example',
-    问题: 'question', 疑问: 'question'
-  }
   const lines = text.replace(/\r\n?/g, '\n').split('\n')
   const out = []
   let i = 0, hits = 0
@@ -537,16 +538,103 @@ function convertLegacy(text) {
   return res.join('\n').trim() + '\n'
 }
 
+// 纯文本稿 → 本编辑器语法
+// 从网页、文档里复制出来的稿子丢了 # 和 **，只剩一段段纯文本，按段落的样子猜结构：
+//   「第2章 …」→ 一级标题；「2.1 …」→ 二级标题；没有句末标点的短段 → 加粗小标题；
+//   「定义 2.3（…）…」→ 卡片，连同紧跟的行间公式；「证明 …」→ 证明卡片，到 □ / 证毕为止；
+//   以「；」分隔的连续段落 → 列表；正文里的「定理 2.3」→ ++定理 2.3++。
+// 卡片类型带 !，保留稿子自己的编号。已有 Markdown 结构的段落（#、>、列表、:::、```、$$）
+// 原样保留，所以点多次不会重复转换。
+function convertPlain(text) {
+  const L = text.replace(/\r\n?/g, '\n').split('\n')
+  // 按空行切段；```…```、:::…:::、跨行的 $$…$$ 整块算一段
+  const paras = []
+  for (let i = 0; i < L.length;) {
+    if (!L[i].trim()) { i++; continue }
+    const close = /^```/.test(L[i]) ? /^```/ : /^:::\s*\S/.test(L[i]) ? /^:::\s*$/
+      : /^\$\$/.test(L[i]) && !/\S\$\$\s*$/.test(L[i]) ? /\$\$\s*$/ : null
+    let k = i + 1
+    if (close) { while (k < L.length && !close.test(L[k])) k++; k++ }
+    else while (k < L.length && L[k].trim() && !/^(```|:::|\$\$)/.test(L[k])) k++
+    paras.push(L.slice(i, k).join('\n'))
+    i = k
+  }
+
+  const isTitle = p => !p.includes('\n') && p.length <= 60 &&
+    !/[。．.，,：:；;！!？?、…]$/.test(p) && !/^([\s#>*+\-|<!\[$`:]|\d+[.)]\s)/.test(p)
+  const heading = p => {
+    if (!isTitle(p)) return null
+    if (/^第\s*[\d一二三四五六七八九十百零]+\s*[章部篇]/.test(p)) return '# ' + p
+    const m = /^(\d+(?:\.\d+)+)\s*([^\d\s.].*)$/.exec(p)
+    return m ? '## *' + m[1] + '* ' + m[2] : null
+  }
+  const KEY = new RegExp('^(证明|' + Object.keys(KIND).sort((a, b) => b.length - a.length).join('|') +
+    ')(\\s*\\d+(?:[.．]\\d+)*)?\\s*([（(][^）)\\n]{0,40}[）)])?\\s*([：:.．]?)\\s*')
+  const head = p => {
+    const m = KEY.exec(p)
+    if (!m || !(m[2] || m[3] || m[4] || m[0].length === p.length)) return null   // 「注意」「定义域」不算
+    return { kind: KIND[m[1]] || 'proof', title: m[0].replace(/[\s：:.．]+$/, ''), rest: p.slice(m[0].length) }
+  }
+  const stop = p => head(p) || heading(p) || /^(#|:::|```)/.test(p)
+  const END = /□|∎|\\square|\\blacksquare|\\Box|证毕/
+  let hits = 0
+
+  // 正文里的「定理 2.3」包上 ++ 变成引用；跳过已有的 ++…++、公式和行内代码。
+  // 单字的「注」「例」不认，太容易误伤（备注 1、比例 2）
+  const REF = new RegExp('(\\+\\+[^+\\n]*\\+\\+|\\$\\$[\\s\\S]*?\\$\\$|\\$[^$\\n]*\\$|`[^`\\n]*`)|((?:' +
+    Object.keys(KIND).filter(k => k.length > 1).join('|') + ')\\s*\\d+(?:[.．]\\d+)*)', 'g')
+  const refs = s => s.replace(REF, (m, skip, ref) => skip ? m : (hits++, '++' + ref + '++'))
+
+  // 以「；」结尾的段落和后面的段落是并列条目（最后一条以句号结尾），合成一个列表；
+  // 每条都以（1）、1）、① 这类序号开头时用有序列表
+  const item = p => !stop(p) && !/^([\s#>*+\-|<!\[$`]|\d+[.)]\s)/.test(p)
+  const ENUM = /^(?:[（(]\d+[）)]|\d+[）)、]|[①-⑳])\s*/
+  for (let i = 0; i < paras.length; i++) {
+    let k = i
+    while (k + 1 < paras.length && /[；;]$/.test(paras[k]) && item(paras[k]) && item(paras[k + 1])) k++
+    if (k === i) continue
+    const items = paras.slice(i, k + 1)
+    const ordered = items.every(p => ENUM.test(p))
+    paras.splice(i, items.length, items.map((p, n) => ordered ? n + 1 + '. ' + p.replace(ENUM, '') : '- ' + p).join('\n'))
+    hits++
+  }
+
+  const out = []
+  for (let i = 0; i < paras.length; i++) {
+    const p = paras[i], h = head(p)
+    if (!h) {
+      const t = heading(p)
+      if (t) { hits++; out.push(t) }
+      else if (/^(#|```)/.test(p)) out.push(p)
+      else if (/^:::/.test(p)) { const n = p.indexOf('\n'); out.push(p.slice(0, n) + refs(p.slice(n))) }   // 卡片标题行不加 ++
+      else if (isTitle(p)) { hits++; out.push('**' + refs(p) + '**') }
+      else out.push(refs(p))
+      continue
+    }
+    hits++
+    const body = h.rest ? [h.rest] : []
+    const next = () => i + 1 < paras.length && !stop(paras[i + 1])
+    if (h.kind === 'proof') {
+      while (!END.test(body.join('\n')) && next()) body.push(paras[++i])
+    } else {
+      if (!body.length && next()) body.push(paras[++i])   // 标题单独一行，正文在下一段
+      while (i + 1 < paras.length && /^\$\$/.test(paras[i + 1])) body.push(paras[++i])
+    }
+    out.push(':::' + h.kind + (h.kind === 'proof' ? ' ' : '! ') + h.title + '\n' + body.map(refs).join('\n\n') + '\n:::')
+  }
+  return hits ? out.join('\n\n') + '\n' : text
+}
+
 document.getElementById('conv').onclick = () => {
   const before = src.value
-  const after = convertLegacy(before)
-  src.value = after
-  try { localStorage.setItem('draft', after) } catch {}
-  render()
-  const blocks = s => (s.match(/^:::/gm) || []).length / 2
-  const n = blocks(after) - blocks(before)
-  document.getElementById('msg').textContent =
-    before === after ? '没有可转换的旧稿结构' : '已转换 ' + n + ' 个块'
+  const after = convertPlain(convertLegacy(before))
+  const msg = document.getElementById('msg')
+  if (before === after) { msg.textContent = '没有识别到可转换的结构'; return }
+  // 用 insertText 替换全文，Ctrl+Z 能撤回；会触发 input，照常渲染和存草稿
+  src.focus()
+  src.select()
+  document.execCommand('insertText', false, after)
+  msg.textContent = '已应用主题，不满意可以 Ctrl+Z 撤销'
 }
 
 document.getElementById('wx').onclick = () => copy(view.innerHTML, '公众号')
