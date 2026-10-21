@@ -462,7 +462,7 @@ function convertLegacy(text) {
       let sub = ''
       const pm0 = /[（(]/.exec(key)
       if (pm0) { sub = key.slice(pm0.index).trim(); key = key.slice(0, pm0.index).trim() }
-      key = key.replace(/[\s\d.]+$/, '').trim()
+      key = key.replace(/[\s\d.：:]+$/, '').trim()
       // 容错：卡片与它的行间公式之间被真空行（而不是 ">"）隔开时，
       // 把后续那段"首行不是 **词**"的引用块并回同一张卡片。
       if (key && KIND[key]) {
@@ -504,7 +504,7 @@ function convertLegacy(text) {
       continue
     }
 
-    const pm = /^\*\*([^*]*证明)[：:]?\*\*[ \t]*(.*)$/.exec(line)
+    const pm = /^\*\*([^*]*证明)[：:]?\*\*[ \t]*[：:]?[ \t]*(.*)$/.exec(line)
     if (pm) {
       hits++
       out.push(':::proof ' + pm[1].trim())
@@ -564,15 +564,21 @@ function convertPlain(text) {
     const m = /^(\d+(?:\.\d+)+)\s*([^\d\s.].*)$/.exec(p)
     return m ? '## *' + m[1] + '* ' + m[2] : null
   }
-  const KEY = new RegExp('^(证明|' + Object.keys(KIND).sort((a, b) => b.length - a.length).join('|') +
-    ')(\\s*\\d+(?:[.．]\\d+)*)?\\s*([（(][^）)\\n]{0,40}[）)])?\\s*([：:.．]?)\\s*')
+  const KEY = new RegExp('^(证明(?:思路|要点|概要)?|' + Object.keys(KIND).sort((a, b) => b.length - a.length).join('|') +
+    ')(\\s*\\d+(?:[.．]\\d+)*)?\\s*([（(][^）)\\n]{0,40}[）)])?\\s*([：:.．。]?)\\s*')
   const head = p => {
+    // 「**定理 1.1**（…）设 …」：去掉加粗再认，加粗的部分必须整个是标题（「**定义域**」不算）
+    const b = /^\*\*([^*\n]+)\*\*/.exec(p)
+    if (b) p = b[1] + p.slice(b[0].length)
     const m = KEY.exec(p)
-    if (!m || !(m[2] || m[3] || m[4] || m[0].length === p.length)) return null   // 「注意」「定义域」不算
-    return { kind: KIND[m[1]] || 'proof', title: m[0].replace(/[\s：:.．]+$/, ''), rest: p.slice(m[0].length) }
+    if (!m || (b ? m[0].length < b[1].length : !(m[2] || m[3] || m[4] || m[0].length === p.length))) return null   // 「注意」「定义域」不算
+    return { kind: KIND[m[1]] || 'proof', title: m[0].replace(/[\s：:.．。]+$/, ''), rest: p.slice(m[0].length) }
   }
   const stop = p => head(p) || heading(p) || /^(#|:::|```)/.test(p)
   const END = /□|∎|\\square|\\blacksquare|\\Box|证毕/
+  // 段落（或公式）以句号收尾，陈述才算说完；行末的 \tag{2.4}、(2.9) 这类编号不算
+  const ended = p => /[。．.！!？?]$/.test(p.replace(/\$\$\s*$/, '').replace(/\\tag\{[^}]*\}/g, '').trim()
+    .replace(/\s*[（(][\d.]+[）)]$/, ''))
   let hits = 0
 
   // 正文里的「定理 2.3」包上 ++ 变成引用；跳过已有的 ++…++、公式和行内代码。
@@ -613,7 +619,8 @@ function convertPlain(text) {
     if (h.kind === 'proof') {
       while (!END.test(body.join('\n')) && next()) body.push(paras[++i])
     } else {
-      if (!body.length && next()) body.push(paras[++i])   // 标题单独一行，正文在下一段
+      // 标题单独一行、「则：」后的列表、公式后接着的半句，都收进卡片
+      while (!(body.length && ended(body[body.length - 1])) && next()) body.push(paras[++i])
       while (i + 1 < paras.length && /^\$\$/.test(paras[i + 1])) body.push(paras[++i])
     }
     out.push(':::' + h.kind + (h.kind === 'proof' ? ' ' : '! ') + h.title + '\n' + body.map(refs).join('\n\n') + '\n:::')
