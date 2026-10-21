@@ -177,10 +177,6 @@ blockquote.markdown-alert-proof {
   color: #2b2c33;
 }
 
-strong, b {
-  font-weight: 700;
-  -webkit-text-stroke: 0.6px currentColor;
-}
 img {
   display: block;
   max-width: 100%;
