@@ -383,11 +383,17 @@ function footnotes() {
 
 function render() {
   view.innerHTML = marked.parse(src.value)
-  view.querySelectorAll('.math').forEach(m => {
-    m.outerHTML = m.dataset.display
-      ? `<section class="tex" style="margin:1em 0;text-align:center;overflow-x:auto">${svg(m.textContent, true)}</section>`
-      : `<span class="tex">${svg(m.textContent, false)}</span>`
-  })
+  try {
+    view.querySelectorAll('.math').forEach(m => {
+      m.outerHTML = m.dataset.display
+        ? `<section class="tex" style="margin:1em 0;text-align:center;overflow-x:auto">${svg(m.textContent, true)}</section>`
+        : `<span class="tex">${svg(m.textContent, false)}</span>`
+    })
+  } catch (e) {
+    // \boldsymbol 这类扩展第一次用到时 MathJax 要异步加载，同步的 tex2svg 会抛出 retry，加载完再渲染一遍
+    if (e.retry) return e.retry.then(render)
+    throw e
+  }
   numbering()
   // 按源码顺序写进 style 属性，后写的覆盖先写的
   for (const r of rules) view.querySelectorAll(r.selectorText).forEach(el => { el.style.cssText += r.style.cssText })
