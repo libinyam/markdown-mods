@@ -568,10 +568,11 @@ function convertPlain(text) {
     ')(\\s*\\d+(?:[.．]\\d+)*)?\\s*([（(][^）)\\n]{0,40}[）)])?\\s*([：:.．。]?)\\s*')
   const head = p => {
     // 「**定理 1.1**（…）设 …」：去掉加粗再认，加粗的部分必须整个是标题（「**定义域**」不算）
-    const b = /^\*\*([^*\n]+)\*\*/.exec(p)
-    if (b) p = b[1] + p.slice(b[0].length)
+    // 旧版会把加粗标题里的编号误包成「**++定义 2.3++（…）**」，去掉 ++ 再认
+    const b = /^\*\*([^*\n]+)\*\*/.exec(p), bt = b && b[1].replace(/\+\+/g, '')
+    if (b) p = bt + p.slice(b[0].length)
     const m = KEY.exec(p)
-    if (!m || (b ? m[0].length < b[1].length : !(m[2] || m[3] || m[4] || m[0].length === p.length))) return null   // 「注意」「定义域」不算
+    if (!m || (b ? m[0].length < bt.length :!(m[2] || m[3] || m[4] || m[0].length === p.length))) return null   // 「注意」「定义域」不算
     return { kind: KIND[m[1]] || 'proof', title: m[0].replace(/[\s：:.．。]+$/, ''), rest: p.slice(m[0].length) }
   }
   const stop = p => head(p) || heading(p) || /^(#|:::|```)/.test(p)
