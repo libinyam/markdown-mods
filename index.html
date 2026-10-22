@@ -738,7 +738,8 @@ function convertPlain(text) {
       if (t) { hits++; out.push(t) }
       else if (/^(#|```)/.test(p)) out.push(p)
       else if (/^:::/.test(p)) { const n = p.indexOf('\n'); out.push(p.slice(0, n) + refs(p.slice(n))) }   // 卡片标题行不加 ++
-      else if (isTitle(p)) { hits++; out.push('**' + refs(p) + '**') }
+      // 后面紧跟行间公式的短段是引导句（「损失函数为」），不是小标题
+      else if (isTitle(p) && !/^\$\$/.test(paras[i + 1] || '')) { hits++; out.push('**' + refs(p) + '**') }
       else out.push(refs(p))
       continue
     }
