@@ -14,6 +14,7 @@ main { flex: 1; display: flex; min-height: 0; }
 #src { flex: 1; padding: 16px; border: 0; resize: none; outline: none; font: 14px/1.7 ui-monospace, Consolas, monospace; }
 #pane { flex: 1; overflow: auto; padding: 24px; }
 #view { width: 375px; margin: 0 auto; padding: 20px 16px; background: #fff; box-shadow: 0 2px 12px rgba(0, 0, 0, .08); }
+#view .tex { cursor: pointer; }
 </style>
 
 <!-- 主题：与 wechat-math.css 相同。media="not all" 只解析不生效，复制前逐条写进 style 属性 -->
@@ -227,6 +228,7 @@ img {
   <button id="conv" title="识别纯文本稿和「> **定理** …」式旧稿里的章节、定义、定理、证明，转成本编辑器的语法">应用主题</button>
   <button id="wx">复制到公众号</button>
   <button id="zh">复制到知乎</button>
+  <button id="x" title="行间公式变成「〔公式 n〕」占位：粘贴后，在右边预览里点一下公式复制它的图片，再到 X 对应位置 Ctrl+V">复制到 X</button>
   <span id="msg"></span>
 </div>
 <main>
@@ -383,8 +385,8 @@ function render() {
   view.innerHTML = marked.parse(src.value)
   view.querySelectorAll('.math').forEach(m => {
     m.outerHTML = m.dataset.display
-      ? `<section style="margin:1em 0;text-align:center;overflow-x:auto">${svg(m.textContent, true)}</section>`
-      : `<span>${svg(m.textContent, false)}</span>`
+      ? `<section class="tex" style="margin:1em 0;text-align:center;overflow-x:auto">${svg(m.textContent, true)}</section>`
+      : `<span class="tex">${svg(m.textContent, false)}</span>`
   })
   numbering()
   // 按源码顺序写进 style 属性，后写的覆盖先写的
@@ -393,19 +395,11 @@ function render() {
   layoutHeadings()
 }
 
-// 知乎会过滤所有样式，只保留结构；公式换成知乎自己的公式图片，行间公式末尾加 \\
-function zhihu() {
+// 知乎、X 都会过滤所有样式，只保留结构；公式由 mathNode 换成各平台认的东西
+function plain(mathNode) {
   const body = document.implementation.createHTMLDocument('').body
   body.innerHTML = marked.parse(src.value)
-  body.querySelectorAll('.math').forEach(m => {
-    const tex = m.textContent.trim() + (m.dataset.display ? '\\\\' : '')
-    const img = body.ownerDocument.createElement('img')
-    img.setAttribute('eeimg', '1')
-    img.setAttribute('src', 'https://www.zhihu.com/equation?tex=' + encodeURIComponent(tex))
-    img.setAttribute('alt', tex)
-    if (m.dataset.display) { const p = body.ownerDocument.createElement('p'); p.append(img); m.replaceWith(p) }
-    else m.replaceWith(img)
-  })
+  body.querySelectorAll('.math').forEach(m => m.replaceWith(mathNode(m, body.ownerDocument)))
   numbering(body)
   // 知乎不认 section，卡片换回引用块
   body.querySelectorAll('section.markdown-alert').forEach(s => {
@@ -417,6 +411,111 @@ function zhihu() {
   return body.innerHTML
 }
 
+// 知乎：换成知乎自己的公式图片，行间公式末尾加 \\
+const zhihu = () => plain((m, doc) => {
+  const tex = m.textContent.trim() + (m.dataset.display ? '\\\\' : '')
+  const img = doc.createElement('img')
+  img.setAttribute('eeimg', '1')
+  img.setAttribute('src', 'https://www.zhihu.com/equation?tex=' + encodeURIComponent(tex))
+  img.setAttribute('alt', tex)
+  if (!m.dataset.display) return img
+  const p = doc.createElement('p'); p.append(img); return p
+})
+
+// X：粘贴进去的图片一律丢掉（外链、data:、SVG 都试过），只认 Ctrl+V 粘贴的图片文件。
+// 行间公式留「〔公式 n〕」占位，再到预览里点公式复制 PNG；行内公式转成文字，转不了的保留 TeX
+function xArticle() {
+  let n = 0
+  return plain((m, doc) => {
+    if (!m.dataset.display) return unicode(m.textContent.trim())
+    const p = doc.createElement('p'); p.textContent = `〔公式 ${++n}〕`; return p
+  })
+}
+
+const SYM = {
+  alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', epsilon: 'ϵ', varepsilon: 'ε', zeta: 'ζ', eta: 'η',
+  theta: 'θ', vartheta: 'ϑ', iota: 'ι', kappa: 'κ', lambda: 'λ', mu: 'μ', nu: 'ν', xi: 'ξ', pi: 'π',
+  rho: 'ρ', sigma: 'σ', tau: 'τ', upsilon: 'υ', phi: 'ϕ', varphi: 'φ', chi: 'χ', psi: 'ψ', omega: 'ω',
+  Gamma: 'Γ', Delta: 'Δ', Theta: 'Θ', Lambda: 'Λ', Xi: 'Ξ', Pi: 'Π', Sigma: 'Σ', Phi: 'Φ', Psi: 'Ψ', Omega: 'Ω',
+  cdot: '·', times: '×', div: '÷', pm: '±', mp: '∓', ast: '∗', circ: '∘', bullet: '•', oplus: '⊕', otimes: '⊗',
+  le: '≤', leq: '≤', ge: '≥', geq: '≥', ne: '≠', neq: '≠', approx: '≈', sim: '∼', simeq: '≃', cong: '≅',
+  equiv: '≡', propto: '∝', ll: '≪', gg: '≫', succ: '≻', succeq: '⪰', prec: '≺', preceq: '⪯', in: '∈', notin: '∉', ni: '∋', subset: '⊂', subseteq: '⊆',
+  supset: '⊃', supseteq: '⊇', mid: '|', parallel: '∥', perp: '⊥', to: '→', rightarrow: '→', leftarrow: '←',
+  gets: '←', Rightarrow: '⇒', Leftarrow: '⇐', leftrightarrow: '↔', Leftrightarrow: '⇔', implies: '⟹',
+  iff: '⟺', mapsto: '↦', coloneqq: '≔', triangleq: '≜', infty: '∞', partial: '∂', nabla: '∇', forall: '∀',
+  exists: '∃', neg: '¬', lnot: '¬', land: '∧', wedge: '∧', lor: '∨', vee: '∨', cup: '∪', cap: '∩',
+  emptyset: '∅', varnothing: '∅', setminus: '∖', sum: '∑', prod: '∏', int: '∫', oint: '∮', ldots: '…',
+  dots: '…', cdots: '⋯', vdots: '⋮', prime: '′', top: '⊤', bot: '⊥', langle: '⟨', rangle: '⟩',
+  lfloor: '⌊', rfloor: '⌋', lceil: '⌈', rceil: '⌉', ell: 'ℓ', hbar: 'ℏ', colon: ':', vert: '|',
+  lvert: '|', rvert: '|', Vert: '‖', lVert: '‖', rVert: '‖', square: '□', Box: '□',
+  ',': ' ', ';': ' ', ':': ' ', ' ': ' ', quad: ' ', qquad: ' ', '!': '',
+  '{': '{', '}': '}', '%': '%', '&': '&', '#': '#', _: '_', $: '$', '|': '‖',
+  left: '', right: '', big: '', Big: '', bigg: '', Bigg: '', bigl: '', bigr: '', Bigl: '', Bigr: '',
+  displaystyle: '', textstyle: '', limits: '', nolimits: ''
+}
+const PAD = new Set('succ succeq prec preceq times div pm mp circ oplus otimes le leq ge geq ne neq approx sim simeq cong equiv propto ll gg in notin ni subset subseteq supset supseteq mid parallel to rightarrow leftarrow gets Rightarrow Leftarrow leftrightarrow Leftrightarrow implies iff mapsto coloneqq triangleq land wedge lor vee cup cap setminus'.split(' '))
+const FN = new Set('log ln exp sin cos tan sinh cosh tanh max min sup inf lim det arg dim ker deg gcd Pr mod'.split(' '))
+const FONT = new Set('mathrm mathit mathbf mathsf mathtt boldsymbol bm operatorname text textrm textit textbf mbox'.split(' '))
+const ACCENT = { hat: '̂', widehat: '̂', bar: '̄', overline: '̅', tilde: '̃', widetilde: '̃', vec: '⃗', dot: '̇', ddot: '̈' }
+const BB = { R: 'ℝ', N: 'ℕ', Z: 'ℤ', Q: 'ℚ', C: 'ℂ', E: '𝔼', P: 'ℙ', F: '𝔽', H: 'ℍ', 1: '𝟙' }
+const CAL = [...'𝒜ℬ𝒞𝒟ℰℱ𝒢ℋℐ𝒥𝒦ℒℳ𝒩𝒪𝒫𝒬ℛ𝒮𝒯𝒰𝒱𝒲𝒳𝒴𝒵']
+const pairs = (a, b) => Object.fromEntries([...a].map((c, i) => [c, [...b][i]]))
+const SUP = pairs('0123456789+-=()abcdefghijklmnoprstuvwxyzT⊤*′', '⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵗᵘᵛʷˣʸᶻᵀᵀ*′')
+const SUB = pairs('0123456789+-=()aehijklmnoprstuvxβγρϕφχ', '₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓᵦᵧᵨᵩᵩᵪ')
+
+// 行内公式转纯文本：x_i → xᵢ，\frac{a}{b} → a/b。遇到不认识的命令（矩阵、\binom、\\ 等）整个公式保留原 TeX
+function unicode(tex) {
+  try { return tex2text(tex).normalize('NFC').replace(/\s+/g, ' ').trim() } catch { return tex }
+}
+
+function tex2text(tex) {
+  let i = 0, out = ''
+  // 读一个参数：{…}、\命令 或单个字符
+  const arg = () => {
+    while (tex[i] === ' ') i++
+    if (tex[i] === '\\') return cmd()
+    if (tex[i] !== '{') return tex[i++] ?? ''
+    let d = 0, j = i
+    for (; j < tex.length; j++) if (tex[j] === '{') d++; else if (tex[j] === '}' && !--d) break
+    const s = tex2text(tex.slice(i + 1, j)); i = j + 1; return s
+  }
+  const wrap = s => /[\s+\-=<>±·×/≤≥≠∈]/.test(s) ? `(${s})` : s
+  const script = (s, map, mark) => [...s].every(c => map[c]) ? [...s].map(c => map[c]).join('') : mark + ([...s].length > 1 ? `(${s})` : s)
+  const cmd = () => {
+    const name = /^\\([a-zA-Z]+|[^a-zA-Z]?)/.exec(tex.slice(i))[1]
+    i += name.length + 1
+    if (FN.has(name)) return /^[\\a-zA-Z]/.test(tex[i] ?? '') ? name + ' ' : name   // \log\det → log det
+    if (/^[a-zA-Z]/.test(name)) while (tex[i] === ' ') i++   // \alpha x：命令后的空格只是分隔符
+    if (/^(left|right|[bB]igg?[lr]?)$/.test(name) && tex[i] === '.') i++
+    if (name === 'operatorname' && tex[i] === '*') i++
+    if (PAD.has(name)) return ` ${SYM[name]} `   // 关系符、运算符两边留空格
+    if (name in SYM) return SYM[name]
+    if (FONT.has(name)) return arg()
+    if (name in ACCENT) return arg().replace(/./gu, c => c + ACCENT[name])
+    if (name === 'mathbb') return [...arg()].map(c => BB[c] ?? c).join('')
+    if (name === 'mathcal') return [...arg()].map(c => CAL[c.charCodeAt(0) - 65] ?? c).join('')
+    if (/^[dt]?frac$/.test(name)) return wrap(arg()) + '/' + wrap(arg())
+    if (name === 'sqrt') return '√' + wrap(arg())
+    if (name === 'xrightarrow') return ' →' + script(arg(), SUP, '^') + ' '
+    throw name
+  }
+  while (i < tex.length) {
+    const c = tex[i]
+    if (c === '^' || c === '_') { i++; out += script(arg(), c === '^' ? SUP : SUB, c) }
+    else if (c === '\\' || c === '{') out += arg()
+    else if (c === "'") { i++; out += '′' }
+    else if (c === '~') { i++; out += ' ' }
+    else { i++; out += c }
+  }
+  return out
+}
+
+function say(text) {
+  const msg = document.getElementById('msg')
+  msg.textContent = text
+  setTimeout(() => msg.textContent === text && (msg.textContent = ''), 3000)
+}
+
 function copy(html, label) {
   document.addEventListener('copy', e => {
     e.clipboardData.setData('text/html', html)
@@ -424,9 +523,38 @@ function copy(html, label) {
     e.preventDefault()
   }, { once: true })
   document.execCommand('copy')
-  const msg = document.getElementById('msg')
-  msg.textContent = `已复制，去${label}编辑器粘贴`
-  setTimeout(() => msg.textContent = '', 3000)
+  say(`已复制，去${label}编辑器粘贴`)
+}
+
+// 点预览里的公式 → 复制成 PNG，到 X 里 Ctrl+V 会直接上传。
+// 白底：透明图在 X 深色模式下黑字看不见。画布固定 1200 宽（2 倍图），X 把图拉满栏宽时每个公式字号仍一致
+view.onclick = e => {
+  const s = e.target.closest('.tex')
+  if (!s) return
+  const el = s.querySelector('svg'), r = el.getBoundingClientRect()
+  const k = 36 / parseFloat(getComputedStyle(el).fontSize)
+  const w = r.width * k, h = r.height * k, pad = 24
+  const c = el.cloneNode(true)
+  c.removeAttribute('style')
+  c.setAttribute('width', w)
+  c.setAttribute('height', h)
+  const img = new Image()
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(c))
+  const png = img.decode().then(() => {
+    const cv = document.createElement('canvas')
+    cv.width = Math.max(1200, w + 2 * pad)
+    cv.height = h + 2 * pad
+    const g = cv.getContext('2d')
+    g.fillStyle = '#fff'
+    g.fillRect(0, 0, cv.width, cv.height)
+    g.drawImage(img, (cv.width - w) / 2, pad, w, h)
+    return new Promise(ok => cv.toBlob(ok, 'image/png'))
+  })
+  const n = [...view.querySelectorAll('section.tex')].indexOf(s) + 1
+  // ClipboardItem 要在点击里同步建好，图片用 Promise 传进去，否则 Safari 不让写
+  navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
+    .then(() => say(n ? `已复制公式 ${n} 的图片，去 X 里〔公式 ${n}〕处 Ctrl+V` : '已复制这个公式的图片'))
+    .catch(err => say('复制图片失败：' + err.message))
 }
 
 const KIND = {
@@ -643,6 +771,7 @@ document.getElementById('conv').onclick = () => {
 
 document.getElementById('wx').onclick = () => copy(view.innerHTML, '公众号')
 document.getElementById('zh').onclick = () => copy(zhihu(), '知乎')
+document.getElementById('x').onclick = () => copy(xArticle(), ' X ')
 
 let timer
 src.oninput = () => {
