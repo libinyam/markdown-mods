@@ -385,7 +385,7 @@ function numbering(root = view) {
   resolveRefs(root, cards, map)
 }
 
-// 引用反查：++#名字++ 认 id，++定理（Beck）++ / ++Beck++ 认标题，认不出就只换号
+// 引用反查：++#名字++ 认 id，++定理（Beck）++ / ++Beck++ 认标题；带编号的照旧换号
 const refNorm = s => s
   .replace(/\d+\s*[.．]\s*\d+/g, ' ')
   .replace(/\s+/g, '')
@@ -393,19 +393,7 @@ const refNorm = s => s
 
 function matchRef(q, cards) {
   const raw = q.trim()
-  if (!raw) return []
   if (raw[0] === '#') return cards.filter(c => c.id && c.id === raw.slice(1))
-
-  // 写了编号：编号在全文唯一，按编号认最稳；对不上就不猜，交回旧号替换那一步
-  const numIn = /\d+\s*[.．]\s*\d+/.exec(raw)
-  if (numIn) {
-    const n = numIn[0].replace(/\s+/g, '').replace(/．/g, '.')
-    const byNum = cards.filter(c => c.num === n)
-    if (byNum.length !== 1) return []
-    const typed = refNorm(raw.replace(/\d+\s*[.．]\s*\d+/g, ''))
-    if (typed && !refNorm(byNum[0].type).includes(typed) && !typed.includes(refNorm(byNum[0].type))) return []
-    return byNum
-  }
 
   const nq = refNorm(raw)
   if (!nq) return []
@@ -422,29 +410,36 @@ function matchRef(q, cards) {
 }
 
 function resolveRefs(root, cards, map) {
-  const apply = (u, c) => {
-    u.textContent = c.num ? c.type + ' ' + c.num : c.text
+  const norm = n => n.replace(/\s+/g, '').replace(/．/g, '.')
+  const hit = (u, c) => {
     u.classList.add('ma-ref-ok')
     u._target = c.el          // 只在预览里用：点一下滚到这卡片
   }
   root.querySelectorAll('.markup-underline').forEach(u => {
     const raw = u.textContent.trim()
-    let hits = matchRef(raw, cards)
-
-    // 作者写的是旧编号（改稿前手抄的那种）：先在 map 里翻译一次，再认一遍
     const numIn = /\d+\s*[.．]\s*\d+/.exec(raw)
-    if (!hits.length && numIn) {
-      const n = numIn[0].replace(/\s+/g, '').replace(/．/g, '.')
-      if (map[n]) hits = matchRef(raw.replace(numIn[0], map[n]), cards)
+    if (numIn) {
+      // 带编号：号是照卡片标题手抄的旧号，先查 map 换成新号（插了新卡片也指得准），
+      // 引用里其余的字（(ii)、「与 2.3」）原样保留
+      for (const n of u.childNodes) {
+        if (n.nodeType === 3) n.data = n.data.replace(/\d+\s*[.．]\s*\d+/g, k => map[k] || k)
+      }
+      // 换完的号对上唯一一张卡、类型词也对得上，才算认出
+      const t = norm(map[numIn[0]] || numIn[0])
+      const byNum = cards.filter(c => norm(c.num) === t)
+      const typed = refNorm(raw), type = byNum.length === 1 && refNorm(byNum[0].type)
+      if (type !== false && (type.includes(typed) || typed.includes(type))) hit(u, byNum[0])
+      return
     }
 
-    if (hits.length === 1) return apply(u, hits[0])
-    if (hits.length > 1) { u.classList.add('ma-ref-amb'); return }
-    if (raw[0] === '#') { u.classList.add('ma-ref-miss'); return }
-    // 认不出指向，至少把旧编号换成新编号
-    for (const n of u.childNodes) {
-      if (n.nodeType === 3) n.data = n.data.replace(/\d+\s*[.．]\s*\d+/g, k => map[k] || k)
+    const hits = matchRef(raw, cards)
+    if (hits.length === 1) {
+      const c = hits[0]
+      u.textContent = c.num ? c.type + ' ' + c.num : c.text
+      return hit(u, c)
     }
+    if (hits.length > 1) u.classList.add('ma-ref-amb')
+    else if (raw[0] === '#') u.classList.add('ma-ref-miss')
   })
 }
 

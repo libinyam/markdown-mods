@@ -13,7 +13,8 @@
  *   :::remark 评注 2.9             灰色（其余类型都用灰色）
  *   :::proof 证明                  白底虚线框
  *   ++定理 2.2++                   交叉引用（金色虚线）
- * 自动编号、标题图标、链接转脚注是编辑器脚本做的，doocs 里没有。
+ * 自动编号、引用反查、标题图标、链接转脚注是编辑器脚本做的，doocs 里没有；
+ * 标题末尾的 {#名字} 在 doocs 里会原样显示。
  */
 
 p, li {
@@ -22,6 +23,11 @@ p, li {
   line-height: 1.9;
   letter-spacing: 0;
   color: #1f1f1f;
+  /* 行首禁则：逗号、句号、右括号不许顶行首 */
+  line-break: strict;
+  /* 少留孤字：浏览器会回头重排临近几行（Chrome 117+ / Safari 17.5+，旧的忽略） */
+  text-wrap: pretty;
+  word-break: normal;
 }
 h1 {
   display: block;
