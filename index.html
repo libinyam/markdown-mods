@@ -15,6 +15,7 @@ main { flex: 1; display: flex; min-height: 0; }
 #pane { flex: 1; overflow: auto; padding: 24px; }
 #view { width: 375px; margin: 0 auto; padding: 20px 16px; background: #fff; box-shadow: 0 2px 12px rgba(0, 0, 0, .08); }
 #view .tex { cursor: pointer; }
+#view .ma-ref-ok { cursor: pointer; }
 </style>
 
 <!-- 主题：与 wechat-math.css 相同。media="not all" 只解析不生效，复制前逐条写进 style 属性 -->
@@ -25,6 +26,11 @@ p, li {
   line-height: 1.9;
   letter-spacing: 0;
   color: #1f1f1f;
+  /* 行首禁则：逗号、句号、右括号不许顶行首 */
+  line-break: strict;
+  /* 少留孤字：浏览器会回头重排临近几行（Chrome 117+ / Safari 17.5+，旧的忽略） */
+  text-wrap: pretty;
+  word-break: normal;
 }
 h1 {
   display: block;
@@ -217,6 +223,25 @@ img {
   white-space: nowrap;
   color: #a8842a;
 }
+/* 认出指向的引用：编号自动填好，浅黄高亮。
+   微信会剥 background-color，所以底色用渐变画，硬色标写成四段 */
+.markup-underline.ma-ref-ok {
+  border-bottom: 0;
+  padding: 0 2px;
+  color: #6d5300;
+  background-image: linear-gradient(to top, rgba(247, 226, 140, 0.9) 0%, rgba(247, 226, 140, 0.9) 46%, rgba(247, 226, 140, 0) 46.5%, rgba(247, 226, 140, 0) 100%);
+}
+/* 指向不明：同名的卡片不止一张 */
+.markup-underline.ma-ref-amb {
+  border-bottom-color: #c07a00;
+  color: #c07a00;
+}
+/* 写了 ++#名字++ 但找不到这张卡 */
+.markup-underline.ma-ref-miss {
+  border-bottom-style: dashed;
+  border-bottom-color: #c0392b;
+  color: #c0392b;
+}
 </style>
 
 <script>window.MathJax = { svg: { fontCache: 'none' }, startup: { typeset: false } }</script>
@@ -276,7 +301,11 @@ marked.use({ extensions: [
     renderer(t) {
       const noNum = /!$/.test(t.kind)
       const kind = t.kind.replace(/!$/, '')
-      return `<section class="markdown-alert markdown-alert-${esc(kind)}${noNum ? ' ma-nonum' : ''}"><p class="markdown-alert-title"><strong>${esc(t.title)}</strong></p>${this.parser.parse(t.tokens)}</section>`
+      // 标题末尾的 {#名字} 是这个卡片的引用名，不显示，只用来给 ++#名字++ 指路
+      let title = t.title, id = ''
+      const im = /\s*\{#([\w:.-]+)\}\s*$/.exec(title)
+      if (im) { id = im[1]; title = title.slice(0, im.index).trim() || kind }
+      return `<section${id ? ` data-ref="${esc(id)}"` : ''} class="markdown-alert markdown-alert-${esc(kind)}${noNum ? ' ma-nonum' : ''}"><p class="markdown-alert-title"><strong>${esc(title)}</strong></p>${this.parser.parse(t.tokens)}</section>`
     } },
 ]})
 
@@ -296,36 +325,121 @@ const rules = [...document.getElementById('theme').sheet.cssRules]
 const src = document.getElementById('src'), view = document.getElementById('view')
 
 // 计数器：按一级标题分组，所有卡片共享一个序列，证明不占号
-// 没有一级标题的稿子保留手写编号；正文 ++…++ 里的旧编号换成新编号
+// 没有一级标题的稿子保留手写编号
+// 顺手建一张卡片索引，供正文 ++…++ 反查：能认出指哪张卡，就把编号填进去
 function numbering(root = view) {
-  if (!root.querySelector(':scope > h1')) return
+  const hasH1 = !!root.querySelector(':scope > h1')
   let sec = 0, cnt = 0
   const map = {}
+  const cards = []
+
   for (const el of root.children) {
     if (el.tagName === 'H1') {
-      sec++; cnt = 0
-      const em = el.querySelector('em')
-      if (em) em.textContent = String(sec)
+      if (hasH1) {
+        sec++; cnt = 0
+        const em = el.querySelector('em')
+        if (em) em.textContent = String(sec)
+      }
       continue
     }
     if (!el.classList.contains('markdown-alert')) continue
-    if (el.classList.contains('markdown-alert-proof')) continue
-    if (el.classList.contains('ma-nonum')) continue
-    cnt++
+
     const t = el.querySelector('.markdown-alert-title')
-    if (!t) continue
-    const s = t.querySelector('strong') || t
-    const num = (sec || 1) + '.' + cnt
-    const old = /\d+\s*[.．]\s*\d+/.exec(s.textContent)
-    if (old) map[old[0]] ??= num
-    const raw = s.textContent.replace(/\d+\s*[.．]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
-    const i = raw.search(/[（(]/)
-    const head = i < 0 ? raw : raw.slice(0, i).trim()
-    const tail = i < 0 ? '' : raw.slice(i)
-    s.textContent = head + ' ' + num + tail
+    const s = t && (t.querySelector('strong') || t)
+    if (!s) continue
+
+    const counted = hasH1 &&
+      !el.classList.contains('markdown-alert-proof') &&
+      !el.classList.contains('ma-nonum')
+
+    let num = ''
+    if (counted) {
+      cnt++
+      num = (sec || 1) + '.' + cnt
+      const old = /\d+\s*[.．]\s*\d+/.exec(s.textContent)
+      if (old) map[old[0]] ??= num
+      const raw = s.textContent.replace(/\d+\s*[.．]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
+      const i = raw.search(/[（(]/)
+      const head = i < 0 ? raw : raw.slice(0, i).trim()
+      const tail = i < 0 ? '' : raw.slice(i)
+      s.textContent = head + ' ' + num + tail
+    } else {
+      // 证明、带 ! 的卡片不重排标题，但可能自带手写编号
+      const m2 = /\d+\s*[.．]\s*\d+/.exec(s.textContent)
+      if (m2) num = m2[0].replace(/\s+/g, '')
+    }
+
+    // 索引：剥掉编号后的干净标题，拆成「类型词 + 括号副标题」
+    const clean = s.textContent.replace(/\d+\s*[.．]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
+    const i2 = clean.search(/[（(]/)
+    cards.push({
+      el: el,
+      id: el.dataset.ref || '',
+      num: num,
+      type: i2 < 0 ? clean : clean.slice(0, i2).trim(),
+      sub: i2 < 0 ? '' : clean.slice(i2),
+      text: clean,
+    })
+  }
+
+  resolveRefs(root, cards, map)
+}
+
+// 引用反查：++#名字++ 认 id，++定理（Beck）++ / ++Beck++ 认标题；带编号的照旧换号
+const refNorm = s => s
+  .replace(/\d+\s*[.．]\s*\d+/g, ' ')
+  .replace(/\s+/g, '')
+  .replace(/[(（]/g, '（').replace(/[)）]/g, '）')
+
+function matchRef(q, cards) {
+  const raw = q.trim()
+  if (raw[0] === '#') return cards.filter(c => c.id && c.id === raw.slice(1))
+
+  const nq = refNorm(raw)
+  if (!nq) return []
+  const levels = [
+    c => refNorm(c.text) === nq,                                  // 全名：定理（Beck）
+    c => c.sub && refNorm(c.sub.replace(/[（(）)]/g, '')) === nq,   // 只写副标题：Beck
+    c => c.type && refNorm(c.type) === nq,                        // 只写类型词：定理
+  ]
+  for (const test of levels) {
+    const hits = cards.filter(test)
+    if (hits.length) return hits
+  }
+  return []
+}
+
+function resolveRefs(root, cards, map) {
+  const norm = n => n.replace(/\s+/g, '').replace(/．/g, '.')
+  const hit = (u, c) => {
+    u.classList.add('ma-ref-ok')
+    u._target = c.el          // 只在预览里用：点一下滚到这卡片
   }
   root.querySelectorAll('.markup-underline').forEach(u => {
-    for (const n of u.childNodes) if (n.nodeType === 3) n.data = n.data.replace(/\d+\s*[.．]\s*\d+/g, k => map[k] || k)
+    const raw = u.textContent.trim()
+    const numIn = /\d+\s*[.．]\s*\d+/.exec(raw)
+    if (numIn) {
+      // 带编号：号是照卡片标题手抄的旧号，先查 map 换成新号（插了新卡片也指得准），
+      // 引用里其余的字（(ii)、「与 2.3」）原样保留
+      for (const n of u.childNodes) {
+        if (n.nodeType === 3) n.data = n.data.replace(/\d+\s*[.．]\s*\d+/g, k => map[k] || k)
+      }
+      // 换完的号对上唯一一张卡、类型词也对得上，才算认出
+      const t = norm(map[numIn[0]] || numIn[0])
+      const byNum = cards.filter(c => norm(c.num) === t)
+      const typed = refNorm(raw), type = byNum.length === 1 && refNorm(byNum[0].type)
+      if (type !== false && (type.includes(typed) || typed.includes(type))) hit(u, byNum[0])
+      return
+    }
+
+    const hits = matchRef(raw, cards)
+    if (hits.length === 1) {
+      const c = hits[0]
+      u.textContent = c.num ? c.type + ' ' + c.num : c.text
+      return hit(u, c)
+    }
+    if (hits.length > 1) u.classList.add('ma-ref-amb')
+    else if (raw[0] === '#') u.classList.add('ma-ref-miss')
   })
 }
 
@@ -383,11 +497,40 @@ function footnotes() {
 
 function render() {
   view.innerHTML = marked.parse(src.value)
+
+  // 行内公式的两件小事，对应 xeCJK 的 \xkanjiskip 与行首禁则：
+  //   1. 贴着汉字的一侧补 0.18em 的缝（作者自己打了空格就不补，免得叠成两倍）
+  //   2. 紧跟其后的收尾标点咬进同一个 nowrap 里，不让逗号句号掉到下一行行首
+  const HAN = /[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]/
+  const CLOSE = '，。、；：！？）》」』”’%…,.;:!?'
+  const GAP = '0.18em'
+
   try {
     view.querySelectorAll('.math').forEach(m => {
-      m.outerHTML = m.dataset.display
-        ? `<section class="tex" style="margin:1em 0;text-align:center;overflow-x:auto">${svg(m.textContent, true)}</section>`
-        : `<span class="tex">${svg(m.textContent, false)}</span>`
+      if (m.dataset.display) {
+        m.outerHTML = `<section class="tex" style="margin:1em 0;text-align:center;overflow-x:auto">${svg(m.textContent, true)}</section>`
+        return
+      }
+      const prev = m.previousSibling, next = m.nextSibling
+      const pc = prev && prev.nodeType === 3 ? prev.data.slice(-1) : ''
+      const nc = next && next.nodeType === 3 ? next.data.slice(0, 1) : ''
+      let st = HAN.test(pc) ? 'margin-left:' + GAP + ';' : ''
+      if (HAN.test(nc)) st += 'margin-right:' + GAP + ';'
+
+      const span = document.createElement('span')
+      span.className = 'tex'
+      if (st) span.setAttribute('style', st)
+      span.innerHTML = svg(m.textContent, false)
+      m.replaceWith(span)
+
+      const after = span.nextSibling
+      if (after && after.nodeType === 3 && CLOSE.includes(after.data[0])) {
+        let k = 0
+        while (k < 2 && k < after.data.length && CLOSE.includes(after.data[k])) k++
+        span.appendChild(document.createTextNode(after.data.slice(0, k)))
+        after.data = after.data.slice(k)
+        span.style.whiteSpace = 'nowrap'
+      }
     })
   } catch (e) {
     // \boldsymbol 这类扩展第一次用到时 MathJax 要异步加载，同步的 tex2svg 会抛出 retry，加载完再渲染一遍
@@ -562,6 +705,12 @@ view.onclick = e => {
     .then(() => say(n ? `已复制公式 ${n} 的图片，去 X 里〔公式 ${n}〕处 Ctrl+V` : '已复制这个公式的图片'))
     .catch(err => say('复制图片失败：' + err.message))
 }
+
+// 点预览里认出指向的引用 → 滚到那张卡片；公众号里没有这个跳转，只是高亮文字
+view.addEventListener('click', e => {
+  const r = e.target.closest && e.target.closest('.ma-ref-ok')
+  if (r && r._target) r._target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+})
 
 const KIND = {
   定理: 'theorem', 命题: 'proposition', 引理: 'lemma', 推论: 'corollary',
