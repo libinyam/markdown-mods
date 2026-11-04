@@ -6,9 +6,40 @@
 <style>
 html, body { height: 100%; margin: 0; }
 body { display: flex; flex-direction: column; font: 14px system-ui, sans-serif; background: #eef0f3; }
-#bar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; background: #fff; border-bottom: 1px solid #ddd; }
-#bar button { padding: 6px 14px; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; }
-#bar button:hover { border-color: #2f6b3b; color: #2f6b3b; }
+#bar { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; background: #fff; border-bottom: 1px solid #ddd; }
+#bar .row { display: flex; align-items: center; gap: 8px; }
+#bar .row .grp { display: flex; gap: 8px; align-items: center; min-width: 0; }
+#bar .row .grp.right { margin-left: auto; flex: none; }
+#bar .row.filebar { border-top: 1px solid #f0f0f0; padding-top: 6px; }
+#bar .row.fmt { border-top: 1px solid #f0f0f0; padding-top: 6px; }
+#bar button.fmt, #bar label.fmt { padding: 3px 7px; min-width: 30px; font-size: 13px; line-height: 1.5; text-align: center; }
+#bar .fmt b, #bar .fmt i, #bar .fmt u, #bar .fmt s { font-weight: inherit; }
+#bar .fmt b { font-weight: 700; }
+#bar .fmt i { font-style: italic; }
+#bar .fmt u { text-decoration: underline; }
+#bar .fmt s { text-decoration: line-through; }
+#bar .sep { width: 1px; height: 15px; background: #e6e6e6; margin: 0 3px; flex: none; }
+#bar .fmt { position: relative; }
+#bar .fmt::after {
+  content: attr(data-tip);
+  position: absolute; left: 50%; top: calc(100% + 7px); transform: translateX(-50%) translateY(-2px);
+  background: #2b2b2b; color: #fff; font-size: 12px; line-height: 1.4; padding: 4px 8px;
+  border-radius: 5px; white-space: nowrap; opacity: 0; pointer-events: none;
+  transition: opacity .12s, transform .12s; z-index: 30; box-shadow: 0 2px 8px rgba(0,0,0,.18);
+}
+#bar .fmt:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+#bar { position: relative; z-index: 5; }
+#bar .plat { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px 5px 8px; }
+#bar .plat svg, #bar .plat img { width: 17px; height: 17px; display: block; flex: none; }
+#file { font-size: 12px; color: #888; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#file.dirty::before { content: '● '; color: #d18b00; }
+#msg { font-size: 12px; color: #666; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#bar button, #bar label { padding: 6px 14px; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; }
+#bar button:hover, #bar label:hover { border-color: #2f6b3b; color: #2f6b3b; }
+#bar button:disabled { opacity: .4; cursor: default; border-color: #ddd; color: #999; }
+#bar button:disabled:hover { border-color: #ddd; color: #999; }
+/* 文件框不能 display:none：WebKit 里对隐藏的 file input 调 .click() 不会弹框 */
+#picFile, #mdFile { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; opacity: 0; }
 #msg { color: #2f7d3a; }
 main { flex: 1; display: flex; min-height: 0; }
 #src { flex: 1; padding: 16px; border: 0; resize: none; outline: none; font: 14px/1.7 ui-monospace, Consolas, monospace; }
@@ -16,6 +47,53 @@ main { flex: 1; display: flex; min-height: 0; }
 #view { width: 375px; margin: 0 auto; padding: 20px 16px; background: #fff; box-shadow: 0 2px 12px rgba(0, 0, 0, .08); }
 #view .tex { cursor: pointer; }
 #view .ma-ref-ok { cursor: pointer; }
+/* 查找条：⌘F 唤出，浮在右上 */
+#find {
+  position: fixed; top: 52px; right: 18px; z-index: 60; display: none; gap: 6px; align-items: center;
+  background: #fff; border: 1px solid #d8dade; border-radius: 8px; padding: 6px 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .12);
+}
+#find.on { display: flex; }
+#find input {
+  width: 190px; padding: 4px 8px; border: 1px solid #d8dade; border-radius: 6px;
+  font-size: 13px; outline: none;
+}
+#find input:focus { border-color: #2f6b3b; }
+#find .n { color: #7a7c86; font-size: 12px; min-width: 52px; text-align: center; }
+#find button {
+  padding: 3px 9px; border: 1px solid #ccc; border-radius: 6px; background: #fff;
+  cursor: pointer; font-size: 12px; line-height: 1.4;
+}
+#find button:hover { border-color: #2f6b3b; color: #2f6b3b; }
+.overlay { position: fixed; inset: 0; background: rgba(20, 22, 28, .38); display: none; z-index: 50; }
+.overlay.on { display: block; }
+.overlay .sheet {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(720px, calc(100vw - 48px)); max-height: calc(100vh - 64px); overflow: auto;
+  background: #fff; border-radius: 12px; padding: 22px 26px 26px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, .22); font-size: 13px; line-height: 1.75; color: #24252b;
+}
+.overlay .sheet.narrow { width: min(460px, calc(100vw - 48px)); }
+.overlay h2 { margin: 0 0 4px; font-size: 17px; }
+.overlay .ver { color: #7a7c86; font-size: 12px; margin-bottom: 14px; }
+.overlay h3 { margin: 20px 0 8px; font-size: 14px; color: #2f6b3b; }
+.overlay p { margin: 6px 0; }
+.overlay ul { margin: 6px 0; padding-left: 18px; }
+.overlay li { margin: 3px 0; }
+.overlay code { background: #f2f3f6; border-radius: 3px; padding: 1px 4px; font-size: 12px; }
+.overlay .row { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+.overlay .row button { padding: 5px 12px; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; font-size: 12px; }
+.overlay .row button:hover { border-color: #2f6b3b; color: #2f6b3b; }
+.overlay .out { font-size: 12px; color: #4a6b4f; line-height: 1.6; }
+.overlay table { border-collapse: collapse; width: 100%; margin: 6px 0; font-size: 12px; }
+.overlay td { padding: 4px 6px; border-bottom: 1px solid #f0f0f3; vertical-align: top; }
+.overlay td:first-child { width: 150px; color: #6b6d78; }
+.overlay .close { position: absolute; right: 16px; top: 12px; cursor: pointer; color: #999; font-size: 18px; line-height: 1; }
+.overlay .gallery {
+  max-height: 440px; overflow: auto; margin: 10px 0 6px;
+  border: 1px solid #ecedf1; border-radius: 10px; background: #fbfbfc;
+}
+.overlay .gallery > div { width: 330px; margin: 0 auto; padding: 8px 4px 16px; }
 </style>
 
 <!-- 主题：与 wechat-math.css 相同。media="not all" 只解析不生效，复制前逐条写进 style 属性 -->
@@ -217,6 +295,26 @@ img {
   color: #5a4b9e;
 }
 
+/* 彩蛋：路标方块。标题前的图形由 signSvg() 内联写进 <strong>，微信不会丢 */
+.markdown-alert-sign {
+  background-color: #fcf9d6;
+  background-image:
+    linear-gradient(to bottom right, #fcf9d6 30%, rgba(150, 128, 0, 0) 100%),
+    linear-gradient(rgba(150, 128, 0, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(150, 128, 0, 0.12) 1px, #fcf9d6 1px);
+  background-size: 100% 100%, 12px 12px, 12px 12px;
+}
+.markdown-alert-sign .markdown-alert-title {
+  background: #f6eca4;
+  color: #6f6006;
+}
+
+.inline-link {
+  color: #1a6fb5;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .markup-underline {
   text-decoration: none;
   border-bottom: 1px dotted #a8842a;
@@ -250,19 +348,245 @@ img {
 </head>
 <body>
 <div id="bar">
-  <button id="conv" title="识别纯文本稿和「> **定理** …」式旧稿里的章节、定义、定理、证明，转成本编辑器的语法">应用主题</button>
-  <button id="wx">复制到公众号</button>
-  <button id="zh">复制到知乎</button>
-  <button id="x" title="行间公式变成「〔公式 n〕」占位：粘贴后，在右边预览里点一下公式复制它的图片，再到 X 对应位置 Ctrl+V">复制到 X</button>
-  <span id="msg"></span>
+  <div class="row">
+    <div class="grp">
+      <button id="help">说明</button>
+      <button id="check">检查更新</button>
+      <button id="conv" title="把「> **定理** …」「**定理** …」这类加粗标题转成卡片；另把章节标题、分号列表、正文里的「定理 2.3」一起规范化">应用主题</button>
+      <button id="num" title="给每张卡片加 !：不占号、标题不显示编号">取消编号</button>
+      <input type="file" id="picFile" accept="image/*" multiple>
+      <input type="file" id="mdFile" accept=".md,.markdown,.txt,text/markdown,text/plain">
+    </div>
+    <div class="grp right">
+    <button id="wx" class="plat" title="复制成公众号可粘贴的 HTML"><img alt="" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAARVBMVEUAwV4Az3MAznIAyG0AjT0AsFQA0nUAy2VMaXEAzXMAznIA0nYA0nUAvGYAz3MA03YAz3MA0HQA03YAznQA3HsA1HcA2HkofJh0AAAAE3RSTlMFXkwjAgeqCgD9N/DiFYnSc5u+YDsZ1AAAAAlwSFlzAAAD6AAAA+gBtXtSawAABJBJREFUWMONV1uCgyAMRCAK+H7A/Y+6E9CClrbLR7dbyRgmySQI82lpofN3rT9tE59+Zws9KuecGkXCq646AKyFW9p5sPtu+2Fbm9EY6kRt1e27ZrNH8H7n5cMR+laSof8BaCOaOYTdYkWA+CX4TWpN/wAQRm3Bn7Z5WRt8qwzpXwDayD68mSeIY5DmlwfaNN7XzCOE9wtC+g2A7fdP9tGJyXzzAP5/s78Q9CcAbdRQ99/mFZZ7OO8A7WFrxpwKcQU42Lsbwp2A8B496w/fz+06Ya3bgH/nUVcBkH/z4wDRep6kGs9iotE1rV/NB4CnA3Y/hskRlwGlFWtMLeoDB9sNgBNnUlzK2EapGPFJBFepAoAQ2EfWrMoI0lwBJVPUddUoPE5gw4y87ZKqaCWXtW3BZMMnElQHWHMMEe52jJ4CQK5z748zjnae3K0qC4BMAewn0YE5BqCm7bk809oRl00K/aI121MOIqfb6acGi2ZsNu+zOsTC7tIStSxg+4soVjdsEnIOu70VNvtwAYixBLDHajLTZ/gMLX1Os1jYcDEBgP8GH/rkwIaNxKWgL7ZwWDfkMEHjGOHyYF5Yx9v43PpeXRUbWcp8q7lE8NIkDuAAihwCv8QwxnqNbtNdQrFjLHKVX6QZgOk/Wuba+esA6dzPxeEoys3CKgE0YZ87vDXG0cKz6AB1b4vIuD4rlg04BEdogx1EgvgM7AAhhSvmjCDKfOe9nOsSKXIwpRA0/NgAtW4eIU6qTxqkTuQDi50207EPo6YvAKI8BBKGmU354ZBwepyRQ+D+M0DX4S0vAD+M56FsiDJl5NH8AtCq4HF34ipi1lrEaWI2vwKIggUwJs4aRP0zwJm73wA6Zv1FwiScfTGa4h9RvgHQOOSybcUVV+sh9/8C6PIZGGC5OOUipv8BZBsAZCHMVfQLQJZHKCi9aPgFoKH/9kXiLTN7eYbiuwfjpU1wugTICD8AujwEuBsAywxmGPoFcOl3TOXpuPfDsI6GPgKI5MEFcLRaPDpyVGwoQh3CuHUkcHAeAZlMwj1nIuvDZEyVfdH0G56Ys5w49+DTc6jAs16ZSg0Jt3mob84DliEhypaaq9ywoJejAyl0N5xW6lcmxn0QFPfmAQqTFVjLaZFOYblm2voA4YIJsuRqIFA/wZK2PQcb+MkC2aKl81DWWx7XQW98AhVNHHIIKDZP+ZysgKx1gz52jet7+mKj6nSnhvmBG5gW98Hi4lC14VUwRSdZWbEFuxzBujgf3NtN3Cib2sDO72RqXdEZz97oev+cryoD79kyYhvgoknNhwHoHaFmz9xiL/ehMET/LwBGGA77bUrnFG9ZK/i8PvCEIwoAbi9t5Zpzs1+7CNAeYWgozh9UzEh80RqOTxA4s5/SLDMd86LOSZVuQxacWIajuKvdJu5ZauKRc2klqvmcdO8AvAHTXB8O3BaL+wWGoTAsY7rKkhKsN+fscQdIl2WtGoyle7pehIC/vt9wbU3vZ0fzoifAdccWuBMs07rG4XiRSrN5vnxngO4NoH5PL6/xb5url28W9tfl/PPFP60/6IOiaRQFNO4AAAAASUVORK5CYII=">公众号</button>
+    <button id="zh" class="plat" title="公式换成知乎的图片接口"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="5" fill="#0084FF"/><text x="12" y="17.5" font-size="13" font-family="PingFang SC,Helvetica,sans-serif" font-weight="600" fill="#fff" text-anchor="middle">知</text></svg>知乎</button>
+    <button id="x" class="plat" title="行间公式变成「〔公式 n〕」占位：粘贴后，在右边预览里点一下公式复制它的图片，再到 X 对应位置 Ctrl+V"><svg viewBox="0 0 24 24" fill="#111" aria-hidden="true"><path d="M17.5 3h3.2l-7 8 8.2 10.8h-6.4l-5-6.5-5.7 6.5H1.6l7.5-8.6L1.2 3h6.6l4.5 6 5.2-6Zm-1.1 17.1h1.8L7.6 4.8H5.7l10.7 15.3Z"/></svg>X</button>
+  </div>
+  </div>
+  <div class="row fmt">
+    <div class="grp">
+      <button class="fmt" id="fB" data-tip="加粗　⌘B" aria-label="加粗"><b>B</b></button>
+      <button class="fmt" id="fI" data-tip="斜体　⌘I" aria-label="斜体"><i>I</i></button>
+      <button class="fmt" id="fU" data-tip="下划线　⌘U" aria-label="下划线"><u>U</u></button>
+      <button class="fmt" id="fS" data-tip="删除线　⌘⇧X" aria-label="删除线"><s>S</s></button>
+      <span class="sep"></span>
+      <button class="fmt" id="fH1" data-tip="一级标题　⌘1" aria-label="一级标题">H1</button>
+      <button class="fmt" id="fH2" data-tip="二级标题　⌘2" aria-label="二级标题">H2</button>
+      <button class="fmt" id="fQuote" data-tip="引用块：给选中行加 &gt;" aria-label="引用块">&gt;</button>
+      <button class="fmt" id="fList" data-tip="无序列表" aria-label="无序列表">•</button>
+      <span class="sep"></span>
+      <button class="fmt" id="fCode" data-tip="行内代码　⌘E" aria-label="行内代码">&lt;/&gt;</button>
+      <button class="fmt" id="fCodeBlock" data-tip="代码块" aria-label="代码块">{ }</button>
+      <button class="fmt" id="fMath" data-tip="行内公式　⌘⇧M" aria-label="行内公式">$</button>
+      <button class="fmt" id="fMathBlock" data-tip="行间公式" aria-label="行间公式">$$</button>
+      <span class="sep"></span>
+      <button class="fmt" id="fLink" data-tip="行内超链接：正文里直接可点" aria-label="行内超链接">超链接</button>
+      <button class="fmt" id="fFoot" data-tip="脚注：正文标 [1]，地址收到文末" aria-label="脚注">脚注</button>
+      <label class="fmt" for="picFile" data-tip="插入图片" aria-label="插入图片">图片</label>
+    </div>
+  </div>
+  <div class="row filebar">
+    <div class="grp">
+      <button id="new" title="清空编辑框，解除与本地文件的关联（⌘N）">新建</button>
+      <button id="open" title="打开本地 Markdown 文件（⌘O）">打开</button>
+      <button id="save" title="保存到已关联的文件（⌘S）">保存</button>
+      <button id="saveAs" title="存成一个新文件，并关联到它（⌘⇧S）">另存为</button>
+    </div>
+    <div class="grp right">
+      <span id="msg"></span>
+      <span id="file" title="当前关联的本地文件"></span>
+    </div>
+  </div>
 </div>
 <main>
   <textarea id="src" spellcheck="false"></textarea>
   <div id="pane"><div id="view"></div></div>
 </main>
 
+<div id="find">
+  <input id="findQ" type="text" placeholder="查找" autocomplete="off" spellcheck="false">
+  <span class="n" id="findN"></span>
+  <button id="findPrev" title="上一个（Shift+Enter）">↑</button>
+  <button id="findNext" title="下一个（Enter）">↓</button>
+  <button id="findClose" title="关闭（Esc）">×</button>
+</div>
+
+<div class="overlay" id="panel">
+  <div class="sheet">
+    <span class="close" id="closePanel">×</span>
+    <h2>数学排版编辑器 · 说明</h2>
+    <div class="ver">本地版本 <b id="localVer"></b></div>
+
+    <h3>旧稿转换</h3>
+    <p>把「旧写法」的稿子整篇改成这个编辑器用的 <code>:::</code> 写法，好让卡片、编号、配色生效。</p>
+    <p><b>旧写法</b>指：定理、定义等用引用块包住（<code>&gt; **定理** 设 …</code>），证明写在块外用 <code>**证明** … $\square$</code> 收尾。这是普通 Markdown 的常见写法，粘进来只会显示成引用块，没有卡片样式。</p>
+    <p><b>怎么用</b>：整篇粘进左侧输入框 → 点「应用主题」→ 自动改写并重新渲染。</p>
+    <p><b>它会做什么</b>：</p>
+    <ul>
+      <li><code>&gt; **定理** 正文</code> → <code>:::theorem 定理</code> + 正文 + <code>:::</code></li>
+      <li>块内的 <code>&gt;$$…$$</code> 去掉行首 <code>&gt;</code>，变成独立公式段</li>
+      <li><code>**证明** … $\square$</code> → <code>:::proof 证明 … :::</code>；<code>**另证**</code>、<code>**别证**</code>、<code>**反证**</code> 同理</li>
+      <li>识别 <code>**定理**（Chevalley）</code> 与 <code>**定理（Chevalley）**</code> 两种副标题写法</li>
+      <li>标题里带类型词就认，名字写在前面也行：<code>&gt; **Artin $L$ 猜想**</code> → <code>:::question Artin L 猜想</code>——标题原样保留，不拆名字，编号接在后面</li>
+      <li><code>**例 1**</code> 这类带编号的类型词，编号会被剥掉，交给脚本重算</li>
+      <li>标题末尾的 <code>{名字}</code> 当成引用名：<code>&gt; **定理（Chevally）**{Chevally子商}</code> → <code>:::theorem 定理（Chevally）{#Chevally子商}</code>（名字不显示）；正文里写 <code>{Chevally子商}</code> 会自动变成 <code>++#Chevally子商++</code>，渲染成卡片编号「定理 2.3」. 只认标题里声明过的名字，公式里的 <code>\frac{a}{b}</code> 不受影响</li>
+    </ul>
+    <p><b>纯文本稿</b>（<code>#</code> 和 <code>**</code> 都丢了的那种）只认三样：章节标题（<code>第 2 章 …</code> → 一级、<code>2.1 …</code> → 二级）、以「；」收尾的并列条目合成列表、正文里的「定理 2.3」包成 <code>++定理 2.3++</code>. <b>卡片不猜</b>：纯文本里的「定理 2.2 设 …」「强 Artin 猜想 设 …」「证 …」一律原样留着，要成卡片就得先有加粗标题.</p>
+    <p><b>它不会做什么</b>：不改动正文的一个字、不动公式内容。已经是 <code>:::</code> 的稿子再点一次不会有任何变化。</p>
+    <p><b>转完建议看一眼</b>：副标题是否落在正确位置. 正文里「定理 2.2」这种「类型词 + 数字」会被自动包成 <code>++…++</code> 并重编号，但「见上文」「前述结论」这类指代它认不出，仍需人工核对.</p>
+
+    <h3>特殊语法</h3>
+    <table>
+      <tr><td>卡片</td><td><code>:::theorem 定理 … :::</code>，kind 决定颜色</td></tr>
+      <tr><td>不计数、不编号</td><td><code>:::theorem! 预备事实 … :::</code> —— kind 后加 <code>!</code>，标题原样显示，不进编号序列</td></tr>
+      <tr><td>自定义标题</td><td><code>:::proof 引理的证明 … :::</code> —— 冒号后那串就是标题，写什么显示什么</td></tr>
+      <tr><td>副标题</td><td><code>:::theorem 定理（Beck 单子性定理）</code> —— 全角括号里的内容跟随编号，不会被当成正文</td></tr>
+      <tr><td>节 / 小节</td><td><code># 标题</code> / <code>## 标题</code>，两侧图标自动添加，不用手写 svg</td></tr>
+      <tr><td>显示节号</td><td><code># *3* 标题</code> —— 写 <code>*3*</code> 才把节号印在标题前；这个数字同时就是这一节的节号</td></tr>
+      <tr><td>交叉引用</td><td><code>++定理 2.2++</code>、<code>++#beck++</code> —— 认卡片、填当前编号、加高亮（见下）</td></tr>
+      <tr><td>引用名</td><td><code>:::theorem 定理（Beck）{#beck}</code> —— 末尾的 <code>{#beck}</code> 是名字，不显示，给 <code>++#beck++</code> 指路；中文名同样可以，如 <code>{#贝克定理}</code></td></tr>
+      <tr><td>公式</td><td><code>$…$</code> 行内，<code>$$…$$</code> 独立成段</td></tr>
+      <tr><td>脚注式链接</td><td><code>[文字](url)</code> → 正文标 <code>文字[1]</code>，地址收到文末「参考资料」；<code>[文字](url "注释")</code> 的注释会显示成 <code>（“注释” url）</code></td></tr>
+      <tr><td>行内超链接</td><td><code>[[文字]](url)</code> → 正文里直接可点的链接，不进参考资料</td></tr>
+      <tr><td>加粗</td><td><code>**文字**</code> —— 额外加了 0.6px 描边，中文也能看出加粗</td></tr>
+      <tr><td>删除线</td><td><code>~~文字~~</code></td></tr>
+      <tr><td>外链图片</td><td><code>![说明](https://…)</code> 或 <code>&lt;img&gt;</code>；自动限制在版心宽度内，不会撑破</td></tr>
+      <tr><td>本地图片</td><td>点「图片」/ 把图拖进左边 / Ctrl+V 粘贴；源码里只留 <code>![名字](img1)</code>，真图存在浏览器里，复制时一起带走</td></tr>
+      <tr><td>卡片内元素</td><td>段落、列表、代码块、公式都能放，只有一条禁令：不能出现顶格单独一行的 <code>:::</code></td></tr>
+      <tr><td>省略标题</td><td><code>:::theorem</code> 后面不写标题时，抬头直接显示类型名 <code>theorem</code></td></tr>
+      <tr><td>路标（彩蛋）</td><td><code>:::sign 注意 … :::</code> —— 黄底，标题前立一块弯道路标；不编号，不占卡片序列</td></tr>
+      <tr><td>其他</td><td>表格、列表、代码块、引用块都是标准 Markdown，原样支持；<code>---</code> 是分隔线</td></tr>
+    </table>
+    <p><b>两个限制</b>：卡片标题里不能写 <code>$…$</code>（标题按纯文本插入，会显示成源码）；卡片里不能出现顶格单独一行的 <code>:::</code>（会被当成结束符）。</p>
+    <p><b>插图</b>：本地图点格式行的「图片」、拖进左边、或直接 Ctrl+V，源码里只留一行 <code>![名字](img1)</code>，真图存在浏览器里。复制到公众号时带的是真图（base64）；微信若是不收，就在预览里点一下那张图，它会进剪贴板，再到公众号对应位置 Ctrl+V. 复制到 X 时图片一律换成「〔图 n〕」占位（X 会丢掉粘贴内容里的所有图片），同样点图复制后粘到占位处.</p>
+
+    <h3>交叉引用</h3>
+    <p>正文里写 <code>++…++</code>，渲染时去找对应的卡片，把<b>当前</b>编号填进去，再加一层浅黄高亮。增删卡片以后不用回头改号.</p>
+    <ul>
+      <li><code>++#beck++</code>　按名字找。卡片标题末尾写 <code>{#beck}</code> 起个名字（名字不显示，中文也行：<code>{#贝克定理}</code>）。最稳，改名、改序号、前后插卡片都不影响.</li>
+      <li><code>++定理（Beck）++</code>、<code>++Beck++</code>、<code>++定理++</code>　按标题找。全名、只写括号里的副标题、只写类型词都认，前提是唯一.</li>
+      <li><code>++定理 2.2++</code>　按编号找。编号在全文唯一，对得上就认；对不上当没认出，只把旧号换成新号.</li>
+    </ul>
+    <p><b>三种颜色</b>：浅黄高亮＝认出来了；橙色虚线＝同名的卡片不止一张，写具体点；红色虚线＝写了 <code>#名字</code> 却没有这张卡。后两种都保持原文不动，不会乱填.</p>
+    <p>在编辑器里点高亮的引用，预览会滚到那张卡；公众号里没有这个跳转，只是高亮文字.</p>
+
+    <h3>行内公式与中文</h3>
+    <p>公式和汉字之间的缝、标点落在哪一行，渲染时会自动处理，不用自己调.</p>
+    <ul>
+      <li><b>汉字旁边自动留缝</b>：公式左右紧贴汉字时补 0.18em，相当于 xeCJK 的 <code>\xkanjiskip</code>。自己敲了空格就不补，两种写法都对，不会叠成两倍.</li>
+      <li><b>标点不掉行首</b>：公式后面紧跟的逗号、句号、右括号会被咬进同一个不断行的块里，宁可整块挪到下一行，也不让标点单独顶行首.</li>
+      <li><b>行首禁则</b>：正文段落带 <code>line-break: strict</code>，中文标点不许顶行首；另有 <code>text-wrap: pretty</code> 少留孤字（旧浏览器忽略这两条，不影响别处）.</li>
+      <li><b>公式不能从中间断开</b>：MathJax 渲染出来是一整条 SVG，浏览器没法在 <code>=</code> 或 <code>+</code> 处折行（LaTeX 可以）。超过半行宽的推导式，请自己写成 <code>$$…$$</code> 独占一段.</li>
+      <li><b>正文不两端对齐</b>：故意留成左对齐、右侧参差。两端对齐配上不可拆的长公式，正是「上一行被扯出大洞」的根源.</li>
+    </ul>
+    <p>前两条是写进 <code>style</code> 属性的，粘到公众号会跟着走；公众号若丢掉某条，只是退回浏览器默认，不影响其他部分.</p>
+
+    <h3>本地文件</h3>
+    <ul>
+      <li><b>新建</b>：⌘N 清空编辑框、解除与本地文件的关联（旧内容按 ⌘Z 还能回来）.</li>
+      <li><b>打开</b>：点工具栏「打开」或 ⌘O，选一个 <code>.md</code> / <code>.txt</code>。内容读进来渲染，工具栏会显示文件名.</li>
+      <li><b>保存</b>：⌘S 直接写回当前关联的文件.<b>没关联文件时这个按钮是灰的</b>，不会误存到别处.</li>
+      <li><b>另存为</b>：⌘⇧S 选个地址存成新文件，并关联到它；之后 ⌘S 写的就是这个新文件.<br>文件名的左边有个橙点，表示改动还没写盘.</li>
+      <li><b>自动保存</b>：一旦关联了文件，停手 1.2 秒就自动写盘，闪退也不会丢. 没关联文件时，仍存在浏览器草稿里，重开还在.</li>
+      <li>写盘只覆盖正文内容，<b>不改文件的其他部分</b>（这个编辑器本来就只管正文）.</li>
+    </ul>
+
+    <h3>格式按钮</h3>
+    <p>中间那一行是常用格式：<b>B</b> 加粗、<i>I</i> 斜体、<u>U</u> 下划线、<s>S</s> 删除线、H1 / H2 标题、<code>&gt;</code> 引用、<code>•</code> 无序列表、<code>&lt;/&gt;</code> 行内代码、<code>{ }</code> 代码块、<code>$</code> 行内公式、<code>$$</code> 行间公式、<code>超链接</code> 行内链接、<code>脚注</code> 文末引用、<code>图片</code> 插图.</p>
+    <p>两个链接按钮的差别：<b>超链接</b>写 <code>[[文字]](url)</code>，正文里就是可点的链接；<b>脚注</b>写 <code>[文字](url)</code>，正文标 <code>[1]</code>、地址统一收到文末「参考资料」（公众号里更保险，微信不会剥掉）. 想要注释就写成 <code>[文字](url "注释")</code>，参考资料里显示 <code>（“注释” url）</code>. 点「复制到公众号」时，正文里的行内超链接会自动临时转成脚注（编号接在参考资料后面），源文件和预览都不变.</p>
+    <p>记号已经套着时再点一次就取消；没有选区就直接插入，光标停在中间，接着打字即可. 引用和列表按行处理，选中几行就加几行.</p>
+
+    <h3>快捷键</h3>
+    <table>
+      <tr><td>⌘B / Ctrl+B</td><td>加粗 <code>**…**</code></td></tr>
+      <tr><td>⌘I</td><td>斜体 <code>*…*</code></td></tr>
+      <tr><td>⌘U</td><td>下划线 <code>&lt;u&gt;…&lt;/u&gt;</code>（Markdown 没有下划线，用 HTML 标签，微信认）</td></tr>
+      <tr><td>⌘S</td><td>保存到当前关联的 md 文件；没有关联文件时弹「另存为」</td></tr>
+      <tr><td>⌘⇧S</td><td>另存为</td></tr>
+      <tr><td>⌘O</td><td>打开本地 md 文件</td></tr>
+      <tr><td>⌘N</td><td>新建（清空并解除文件关联，⌘Z 可回）</td></tr>
+      <tr><td>⌘⇧X</td><td>删除线 <code>~~…~~</code></td></tr>
+      <tr><td>⌘E</td><td>行内代码 <code>`…`</code></td></tr>
+      <tr><td>⌘K</td><td>行内超链接 <code>[[文字]](url)</code></td></tr>
+      <tr><td>⌘⇧K</td><td>脚注式链接 <code>[文字](url)</code></td></tr>
+      <tr><td>⌘⇧M</td><td>行内公式 <code>$…$</code></td></tr>
+      <tr><td>⌘1 / ⌘2</td><td>一级 / 二级标题（再按一次取消）</td></tr>
+      <tr><td>⌘⇧N</td><td>一键取消 / 应用卡片编号（等同工具栏那个按钮）</td></tr>
+      <tr><td>⌘Z</td><td>撤销（自己记历史，快捷键改的字也能撤）</td></tr>
+      <tr><td>⌘⇧Z / ⌘Y</td><td>重做</td></tr>
+      <tr><td>⌘F</td><td>查找</td></tr>
+    </table>
+    <p>记号已经套着时再按一次就取消；没有选区时直接插入记号，光标停在中间，接着打字即可.</p>
+
+    <h3>查找与定位</h3>
+    <ul>
+      <li><b>⌘F / Ctrl+F</b> 打开查找条，搜的是左边源码。Enter 下一个、Shift+Enter 上一个、Esc 关闭；光标有选区时会自动填进搜索框。</li>
+      <li><b>在右边划选一段</b>，左边会跟着选中同一段源码；划选过程中不动，松手那一刻才同步.</li>
+      <li><b>双击右边预览里的文字</b>，左边精确选中那个词；双击公式、图标这类选不中文字的地方，就选中它所在的那一段（连公式一起选中）。</li>
+      <li>同步时左边会抢焦点，右边的选区高亮随之消失——这是浏览器行为，左边不聚焦就画不出选区，两者只能要一个.</li>
+    </ul>
+
+    <h3>卡片一览</h3>
+    <p>十几张卡片共用七组颜色。下面是拿当前主题现渲染的样张，连编号都是现算的，框内可上下滚动。</p>
+    <div class="gallery" id="gallery"></div>
+
+    <p><b>编号规则</b></p>
+    <ul>
+      <li><b>节号优先用手写的那一个</b>：标题开头写了数字（<code># 3 表示论</code>、<code># *3* 表示论</code>、<code># 3. 表示论</code>）就拿它当节号，卡片跟着变成 3.1、3.2…… 从 0 开始编号也一样（<code># 0 引言</code> → 0.1）。没写数字才顺延：上一节 +1。</li>
+      <li>每节开头卡片序号重排；所有卡片共用一条序列：定理 3.1、命题 3.2、引理 3.3…… 不是每类各自从 1 开始。</li>
+      <li>三种不占号：<code>proof</code>、<code>sign</code>、kind 后加 <code>!</code> 的卡片. 它们连标题都不改写。</li>
+      <li>工具栏的<b>取消编号</b>一键给所有卡片补 <code>!</code>（证明、路标不动），再点一次变成<b>应用编号</b>，把 <code>!</code> 全去掉；两个方向都能 <code>⌘Z</code> 撤销，快捷键 <code>⌘⇧N</code>。</li>
+      <li>标题里手写的旧编号会被剥掉重算，格式固定为 <code>节.序</code>；没有一级标题时用 1.x 兜底。</li>
+      <li>全角括号里的副标题跟着编号走，写成「定理 1.1（Beck 单子性定理）」.</li>
+      <li>节号默认不显示，写 <code># *3* 标题</code> 才印在标题前；卡片编号始终按节算。</li>
+      <li>正文里的 <code>++…++</code> 会去找对应的卡片再填号，见下一节.</li>
+    </ul>
+    <p><b>kind 写英文小写</b>。表里的中文词只在「应用主题」转换旧稿时识别：<code>:::定理</code> 能跑，但会落到没有配色的灰卡。</p>
+
+    <h3>彩蛋</h3>
+    <p style="text-align:center;margin:16px 0 8px"><span id="egg"></span></p>
+    <p style="text-align:center;color:#7a7c86;font-size:12px;margin:0">弯道在前，结论在后. 这块牌子就是 <code>:::sign</code> 的记号.</p>
+  </div>
+</div>
+
+<div class="overlay" id="upPanel">
+  <div class="sheet narrow">
+    <span class="close" id="closeUp">×</span>
+    <h2>检查更新</h2>
+    <div class="ver">本地版本 <b id="localVer2"></b> · 仓库 <b>libinyam/markdown-mods</b></div>
+
+    <p class="out" id="upOut">正在查询…</p>
+    <div class="row">
+      <button id="checkUp">重新检查</button>
+      <button id="openRepo">打开仓库</button>
+    </div>
+
+    <h3>怎么更新</h3>
+    <p>这个编辑器是单文件应用，更新就是替换 <code>index.html</code>；仓库版和你本地的改动可能已经分叉，<b>覆盖前先备份</b>现在的文件。</p>
+    <p>检查的做法是去 GitHub 读仓库 <code>main</code> 分支最新提交的日期，和本地版本号比：仓库更晚就给你提交说明和链接，否则显示已是最新。只读，不会自动下载或覆盖。</p>
+  </div>
+</div>
+
+
 <script>
 const WHEEL = '<svg width="21" height="23" viewBox="0 0 292 315" fill="#1a3a8f"><path d="M194 0h16v3h-16zM184 3h34v3h-34zM180 6h44v3h-44zM176 9h52v3h-52zM174 12h56v3h-56zM170 15h62v3h-62zM168 18h65v3h-65zM168 21h68v3h-68zM166 24h70v3h-70zM166 27h72v3h-72zM164 30h73v3h-73zM164 33h75v3h-75zM164 36h75v3h-75zM164 39h75v3h-75zM164 42h73v3h-73zM164 45h73v3h-73zM166 48h71v3h-71zM168 51h67v3h-67zM168 54h66v3h-66zM170 57h62v3h-62zM62 60h56v3h-56zM172 60h57v3h-57zM58 63h109v3h-109zM176 63h51v3h-51zM54 66h169v3h-169zM52 69h167v3h-167zM48 72h141v3h-141zM190 72h20v3h-20zM44 75h147v3h-147zM40 78h153v3h-153zM36 81h159v3h-159zM32 84h164v3h-164zM28 87h170v3h-170zM26 90h175v3h-175zM22 93h180v3h-180zM18 96h56v3h-56zM108 96h96v3h-96zM14 99h56v3h-56zM116 99h89v3h-89zM10 102h56v3h-56zM114 102h93v3h-93zM6 105h56v3h-56zM114 105h96v3h-96zM4 108h54v3h-54zM112 108h100v3h-100zM4 111h52v3h-52zM110 111h103v3h-103zM2 114h49v3h-49zM108 114h106v3h-106zM2 117h45v3h-45zM106 117h110v3h-110zM2 120h41v3h-41zM106 120h113v3h-113zM4 123h36v3h-36zM104 123h117v3h-117zM6 126h31v3h-31zM80 126h5v3h-5zM102 126h121v3h-121zM224 126h57v3h-57zM8 129h25v3h-25zM68 129h17v3h-17zM100 129h75v3h-75zM180 129h107v3h-107zM10 132h18v3h-18zM62 132h22v3h-22zM98 132h76v3h-76zM180 132h109v3h-109zM54 135h28v3h-28zM98 135h75v3h-75zM184 135h108v3h-108zM50 138h31v3h-31zM96 138h76v3h-76zM184 138h107v3h-107zM44 141h36v3h-36zM94 141h76v3h-76zM188 141h104v3h-104zM40 144h38v3h-38zM92 144h75v3h-75zM188 144h103v3h-103zM36 147h40v3h-40zM90 147h76v3h-76zM192 147h100v3h-100zM32 150h43v3h-43zM88 150h76v3h-76zM194 150h97v3h-97zM30 153h45v3h-45zM88 153h76v3h-76zM196 153h93v3h-93zM26 156h46v3h-46zM86 156h75v3h-75zM200 156h86v3h-86zM24 159h42v3h-42zM84 159h75v3h-75zM22 162h39v3h-39zM84 162h73v3h-73zM18 165h38v3h-38zM84 165h71v3h-71zM16 168h36v3h-36zM84 168h70v3h-70zM14 171h35v3h-35zM84 171h127v3h-127zM12 174h34v3h-34zM86 174h129v3h-129zM12 177h32v3h-32zM88 177h130v3h-130zM10 180h32v3h-32zM88 180h131v3h-131zM8 183h32v3h-32zM90 183h130v3h-130zM6 186h31v3h-31zM92 186h130v3h-130zM6 189h30v3h-30zM94 189h130v3h-130zM4 192h30v3h-30zM96 192h130v3h-130zM4 195h29v3h-29zM98 195h130v3h-130zM2 198h29v3h-29zM98 198h130v3h-130zM2 201h28v3h-28zM102 201h128v3h-128zM2 204h28v3h-28zM188 204h44v3h-44zM0 207h28v3h-28zM188 207h45v3h-45zM0 210h27v3h-27zM190 210h44v3h-44zM0 213h28v3h-28zM192 213h44v3h-44zM0 216h28v3h-28zM176 216h2v3h-2zM194 216h44v3h-44zM0 219h28v3h-28zM172 219h8v3h-8zM194 219h44v3h-44zM0 222h28v3h-28zM166 222h14v3h-14zM196 222h44v3h-44zM0 225h28v3h-28zM162 225h21v3h-21zM198 225h43v3h-43zM0 228h28v3h-28zM158 228h26v3h-26zM200 228h43v3h-43zM0 231h28v3h-28zM156 231h28v3h-28zM200 231h45v3h-45zM0 234h28v3h-28zM156 234h28v3h-28zM202 234h44v3h-44zM0 237h28v3h-28zM154 237h29v3h-29zM204 237h44v3h-44zM0 240h29v3h-29zM154 240h29v3h-29zM206 240h44v3h-44zM2 243h29v3h-29zM152 243h29v3h-29zM208 243h43v3h-43zM2 246h29v3h-29zM152 246h29v3h-29zM210 246h43v3h-43zM2 249h30v3h-30zM150 249h29v3h-29zM210 249h44v3h-44zM4 252h31v3h-31zM150 252h30v3h-30zM212 252h43v3h-43zM4 255h31v3h-31zM148 255h31v3h-31zM214 255h43v3h-43zM6 258h31v3h-31zM146 258h31v3h-31zM216 258h43v3h-43zM8 261h32v3h-32zM144 261h32v3h-32zM218 261h42v3h-42zM8 264h34v3h-34zM142 264h33v3h-33zM218 264h43v3h-43zM10 267h34v3h-34zM138 267h34v3h-34zM220 267h42v3h-42zM12 270h37v3h-37zM136 270h35v3h-35zM222 270h42v3h-42zM14 273h38v3h-38zM132 273h37v3h-37zM224 273h42v3h-42zM16 276h40v3h-40zM128 276h39v3h-39zM224 276h42v3h-42zM18 279h42v3h-42zM124 279h41v3h-41zM226 279h41v3h-41zM20 282h47v3h-47zM118 282h45v3h-45zM228 282h39v3h-39zM24 285h52v3h-52zM110 285h50v3h-50zM230 285h36v3h-36zM26 288h130v3h-130zM232 288h32v3h-32zM30 291h124v3h-124zM234 291h26v3h-26zM32 294h117v3h-117zM36 297h109v3h-109zM40 300h100v3h-100zM46 303h88v3h-88zM52 306h75v3h-75zM60 309h62v3h-62zM72 312h38v3h-38z"/></svg>'
+
+// 彩蛋：弯道路标。:::sign 方块的标记，也贴在说明面板最底下
+// 用 svg 而不是 png：微信会丢 data: 图，内联 svg 能原样带过去
+function signSvg(h, extra, head) {
+  // head：只留牌子本身，去掉杆和底座。标题栏里 20 来像素高，杆子只会糊成一点
+  const H = head ? 256 : 334
+  const w = Math.round(h * 250 / H)
+  return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 250 ' + H + '"' + (extra ? ' style="' + extra + '"' : '') + '>' +
+    '<rect x="113" y="24" width="23" height="22" fill="#000"/>' +
+    '<path d="M134.2 47 L224 136.8 Q233.2 146 224 155.2 L134.2 245 Q125 254.2 115.8 245 L26 155.2 Q16.8 146 26 136.8 Z" fill="#000"/>' +
+    '<path d="M131.4 50.2 L220.8 139.6 Q227.2 146 220.8 152.4 L131.4 241.8 Q125 248.2 118.6 241.8 L29.2 152.4 Q22.8 146 29.2 139.6 Z" fill="#FFFF00"/>' +
+    '<path d="M100 98 L162 104 L88 188 L150 194" fill="none" stroke="#000" stroke-width="21" stroke-linejoin="round" stroke-linecap="round"/>' +
+    (head ? '' :
+      '<rect x="113" y="244" width="23" height="61" fill="#808080" stroke="#000" stroke-width="7"/>' +
+      '<line x1="58" y1="309" x2="192" y2="309" stroke="#000" stroke-width="7" stroke-linecap="round"/>') +
+    '</svg>'
+}
 
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
@@ -303,9 +627,13 @@ marked.use({ extensions: [
       const kind = t.kind.replace(/!$/, '')
       // 标题末尾的 {#名字} 是这个卡片的引用名，不显示，只用来给 ++#名字++ 指路
       let title = t.title, id = ''
-      const im = /\s*\{#([\w:.-]+)\}\s*$/.exec(title)
+      const im = /\s*\{#([\w:.\-\u4e00-\u9fa5]+)\}\s*$/.exec(title)
       if (im) { id = im[1]; title = title.slice(0, im.index).trim() || kind }
-      return `<section${id ? ` data-ref="${esc(id)}"` : ''} class="markdown-alert markdown-alert-${esc(kind)}${noNum ? ' ma-nonum' : ''}"><p class="markdown-alert-title"><strong>${esc(title)}</strong></p>${this.parser.parse(t.tokens)}</section>`
+      // 路标方块：标题前插一块弯道牌，标题省略时显示「注意」
+      const isSign = kind === 'sign'
+      if (isSign && title === 'sign') title = '注意'
+      const mark = isSign ? signSvg(21, 'vertical-align:-6px;margin-right:5px;', true) : ''
+      return `<section${id ? ` data-ref="${esc(id)}"` : ''} class="markdown-alert markdown-alert-${esc(kind)}${noNum ? ' ma-nonum' : ''}"><p class="markdown-alert-title"><strong>${mark}${esc(title)}</strong></p>${this.parser.parse(t.tokens)}</section>`
     } },
 ]})
 
@@ -316,6 +644,21 @@ function svg(tex, display) {
   el.style.width = el.getAttribute('width')
   el.removeAttribute('width')
   el.style.display = 'initial'
+  // 根节点默认 overflow:hidden，字形稍微探出 viewBox 就会被切（\ge 的横杠、括号底端最明显）
+  el.style.overflow = 'visible'
+  el.setAttribute('overflow', 'visible')
+
+  // 再给上下各留 3% 的余量：viewBox 和元素高度同比例放大，字号不变，
+  // 但字形不再贴着盒子边缘，栅格化（微信、截图）时就不会啃掉底部那一笔
+  const vb = (el.getAttribute('viewBox') || '').trim().split(/\s+/).map(Number)
+  const hEx = parseFloat(el.getAttribute('height'))
+  if (vb.length === 4 && vb[3] > 0 && hEx > 0) {
+    const pad = vb[3] * 0.03
+    el.setAttribute('viewBox', [vb[0], vb[1] - pad, vb[2], vb[3] + 2 * pad].join(' '))
+    el.setAttribute('preserveAspectRatio', 'none')
+    el.setAttribute('height', (hEx * (vb[3] + 2 * pad) / vb[3]).toFixed(4) + 'ex')
+  }
+
   el.style.setProperty('max-width', '300vw', 'important')
   el.querySelector('g')?.setAttribute('fill', 'currentColor')
   return el.outerHTML
@@ -323,6 +666,159 @@ function svg(tex, display) {
 
 const rules = [...document.getElementById('theme').sheet.cssRules]
 const src = document.getElementById('src'), view = document.getElementById('view')
+
+const APP_VERSION = '2026-10-25';
+const APP_REPO = 'libinyam/markdown-mods';
+const REPO_URL = 'https://github.com/' + APP_REPO;
+
+document.getElementById('localVer').textContent = APP_VERSION;
+document.getElementById('localVer2').textContent = APP_VERSION;
+
+// 两个独立浮层：说明 / 检查更新
+function openOverlay(el) {
+  document.querySelectorAll('.overlay').forEach(o => o.classList.toggle('on', o === el));
+}
+document.querySelectorAll('.overlay').forEach(el => {
+  el.onclick = e => { if (e.target === el) el.classList.remove('on'); };
+});
+document.getElementById('closePanel').onclick = () => document.getElementById('panel').classList.remove('on');
+document.getElementById('closeUp').onclick = () => document.getElementById('upPanel').classList.remove('on');
+
+document.getElementById('help').onclick = () => {
+  renderGallery();
+  openOverlay(document.getElementById('panel'));
+};
+document.getElementById('check').onclick = () => {
+  openOverlay(document.getElementById('upPanel'));
+  checkUpdate();
+};
+
+async function checkUpdate() {
+  const out = document.getElementById('upOut');
+  out.textContent = '正在查询…';
+  try {
+    const r = await fetch('https://api.github.com/repos/' + APP_REPO + '/commits/main', { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    const date = (d.commit.author.date || '').slice(0, 10);
+    const msg = (d.commit.message || '').split('\n')[0].slice(0, 60);
+    if (date > APP_VERSION) {
+      out.innerHTML = '<b style="color:#8a6a12">仓库有 ' + date + ' 的提交</b><br>' +
+        esc(msg) + '<br><span style="color:#6b6d78">要不要覆盖由你决定，覆盖前先备份。</span>';
+    } else {
+      out.textContent = '已是最新（仓库最新提交 ' + date + '，本地 ' + APP_VERSION + '）';
+    }
+  } catch (e) {
+    out.textContent = '查询失败：' + e.message + '（离线或网络受限时可忽略）';
+  }
+}
+
+document.getElementById('checkUp').onclick = checkUpdate;
+document.getElementById('openRepo').onclick = () => {
+  const t = document.createElement('textarea');
+  t.value = REPO_URL;
+  document.body.appendChild(t);
+  t.select();
+  document.execCommand('copy');
+  t.remove();
+  const b = document.getElementById('openRepo');
+  const old = b.textContent;
+  b.textContent = '链接已复制';
+  setTimeout(() => { b.textContent = old; }, 1600);
+};
+
+document.getElementById('egg').innerHTML = signSvg(72);
+
+// 说明面板的「卡片一览」：走同一套 marked + 主题 + 计数器，颜色和编号都是真的
+const GALLERY = `# 第一节
+
+:::theorem 定理
+蓝 · \`#e6ecf9\`
+:::
+
+:::proposition 命题
+黄 · \`#faf5dc\`
+:::
+
+:::lemma 引理
+青 · \`#e3f2f1\`
+:::
+
+:::fact 事实
+青，与引理同色
+:::
+
+:::corollary 推论
+红 · \`#fbeceb\`
+:::
+
+:::definition 定义
+绿 · \`#e6f2e4\`
+:::
+
+:::axiom 公理
+绿，与定义同色
+:::
+
+:::remark 评注
+灰 · \`#ededf2\`
+:::
+
+:::example 例（局部化）
+橙 · \`#fdf2e2\`
+:::
+
+:::question 问题
+紫 · \`#f5f3fc\`
+:::
+
+:::proof 证明
+白底虚线，不编号
+:::
+
+:::sign 注意
+路标，不编号
+:::
+
+:::theorem! 预备事实
+加 ! ，不编号
+:::
+
+# 第二节
+
+:::theorem 定理
+换节，从 2.1 重排
+:::
+
+:::corollary 结论
+红色，与推论同 kind
+:::
+`
+
+function renderGallery() {
+  const box = document.getElementById('gallery')
+  if (!box || box.dataset.done) return
+  const d = document.createElement('div')
+  d.innerHTML = marked.parse(GALLERY)
+  numbering(d)
+  for (const r of rules) d.querySelectorAll(r.selectorText).forEach(el => { el.style.cssText += r.style.cssText })
+  // 样张排紧一点，一屏能多看两张
+  d.querySelectorAll('section.markdown-alert').forEach(s => { s.style.margin = '14px 0' })
+  // 把一级标题压成一行小注，免得样张里出现两个大标题
+  let n = 0
+  d.querySelectorAll('h1').forEach(h => {
+    n++
+    const cap = document.createElement('p')
+    cap.textContent = h.textContent.trim() + ' · 编号从 ' + n + '.1 起'
+    cap.setAttribute('style', 'margin:16px 0 2px;text-align:center;font-size:12px;letter-spacing:1px;color:#8a8d99')
+    h.replaceWith(cap)
+  })
+  const inner = document.createElement('div')
+  inner.append(...d.childNodes)
+  box.append(inner)
+  box.dataset.done = '1'
+}
+
 
 // 计数器：按一级标题分组，所有卡片共享一个序列，证明不占号
 // 没有一级标题的稿子保留手写编号
@@ -336,7 +832,11 @@ function numbering(root = view) {
   for (const el of root.children) {
     if (el.tagName === 'H1') {
       if (hasH1) {
-        sec++; cnt = 0
+        // 手写节号优先：# 3 表示论… / # *3* 表示论… / # 3. 表示论… 都按 3 算，
+        // 这样卡片编号跟着作者自己的编号走（他们习惯从 0 开始）；没写数字才顺延
+        const w = /^\s*(\d{1,3})(?=[\s.．、:：]|$)/.exec(el.textContent)
+        sec = w ? +w[1] : sec + 1
+        cnt = 0
         const em = el.querySelector('em')
         if (em) em.textContent = String(sec)
       }
@@ -350,12 +850,13 @@ function numbering(root = view) {
 
     const counted = hasH1 &&
       !el.classList.contains('markdown-alert-proof') &&
+      !el.classList.contains('markdown-alert-sign') &&
       !el.classList.contains('ma-nonum')
 
     let num = ''
     if (counted) {
       cnt++
-      num = (sec || 1) + '.' + cnt
+      num = (hasH1 ? sec : 1) + '.' + cnt   // 有 # 就照手写节号，第 0 节也要写 0.x
       const old = /\d+\s*[.．]\s*\d+/.exec(s.textContent)
       if (old) map[old[0]] ??= num
       const raw = s.textContent.replace(/\d+\s*[.．]\s*\d+/g, ' ').replace(/\s+/g, ' ').trim()
@@ -462,17 +963,32 @@ function layoutHeadings() {
   })
 }
 
+// [[文字]](url) 是行内超链接（保留 <a>），[文字](url) 仍是脚注（收到文末参考资料）。
+// 借 marked 的 title 位当标记，渲染完再把 title 去掉。
+function preprocessInlineLinks(text) {
+  return text.replace(/\[\[([^\[\]\n]+)\]\]\((https?:\/\/[^)\s]*)\)/g, '[$1]($2 "inline")')
+}
+function mdParse(text) {
+  return marked.parse(preprocessInlineLinks(text))
+}
+
 // 超链接 → 脚注
 // 微信会把 <a> 剥掉，只留下文字和一段裸 URL（就成了"博客(https://…)"那种残骸）。
 // 所以正文里只留「文字[1]」，所有地址统一收到文末的「参考资料」。
 function footnotes() {
-  const as = [...view.querySelectorAll('a[href]')]
+  const all = [...view.querySelectorAll('a[href]')]
+  all.forEach(a => {
+    if (a.getAttribute('title') !== 'inline') return
+    a.removeAttribute('title')
+    a.classList.add('inline-link')     // 行内超链接：留在正文里，不进参考资料
+  })
+  const as = all.filter(a => !a.classList.contains('inline-link'))
   if (!as.length) return
 
   const refs = []
   as.forEach((a, i) => {
     const n = i + 1
-    refs.push({ n: n, href: a.getAttribute('href') })
+    refs.push({ n: n, href: a.getAttribute('href'), note: a.getAttribute('title') || '' })
     const sup = document.createElement('sup')
     sup.setAttribute('style', 'font-size:11px;line-height:0;color:#2f8f8f;vertical-align:3px;')
     sup.textContent = '[' + n + ']'
@@ -488,15 +1004,63 @@ function footnotes() {
 
   refs.forEach(r => {
     const p = document.createElement('p')
-    p.setAttribute('style', 'margin:0 0 8px;font-size:14px;line-height:1.95;color:#1f1f1f;' + F)
-    p.innerHTML = '<span style="color:#a3a3a3">[' + r.n + ']</span>　　链接：' +
-                  '<span style="font-style:italic;color:#6f6f6f">' + esc(r.href) + '</span>'
+    p.setAttribute('style', 'margin:0 0 8px;font-size:14px;line-height:1.95;color:#1f1f1f;word-break:break-all;' + F)
+    // 中文地址常被编码成 %E8%90%A8…，这里解回可读的样子（解不开就原样）
+    let show = r.href
+    try { show = decodeURI(r.href) } catch {}
+    const url = '<span style="font-style:italic;color:#6f6f6f">' + esc(show) + '</span>'
+    const body = r.note
+      ? '（“' + esc(r.note) + '” ' + url + '）'
+      : '链接：' + url
+    p.innerHTML = '<span style="color:#a3a3a3">[' + r.n + ']</span>　　' + body
     view.appendChild(p)
   })
 }
 
+// 公众号版：微信会剥 <a>，所以把正文里的行内超链接（[[文字]](url)）临时转成脚注条目，
+// 编号接着已有的参考资料往下排。只改复制出去的那份 DOM，预览和源文件都不动。
+function wxArticle() {
+  const box = view.cloneNode(true)
+  const links = [...box.querySelectorAll('a.inline-link')]
+  if (!links.length) return box.innerHTML
+
+  const F = 'font-family:"Source Han Serif SC","Noto Serif SC","Songti SC",STSong,SimSun,serif;'
+  let h2 = [...box.querySelectorAll('h2')].find(h => h.textContent.trim() === '参考资料')
+  if (!h2) {
+    h2 = document.createElement('h2')
+    h2.setAttribute('style', 'margin:2.6em 0 1em;padding:0;border:0;font-size:20px;font-weight:bold;line-height:1.5;color:#1f1f1f;font-family:-apple-system,"PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif;')
+    h2.textContent = '参考资料'
+    box.appendChild(h2)
+  }
+
+  let n = 0
+  box.querySelectorAll('p').forEach(p => {
+    const m = /^\[(\d+)\]/.exec(p.textContent.trim())
+    if (m) n = Math.max(n, +m[1])
+  })
+
+  links.forEach(a => {
+    n++
+    const href = a.getAttribute('href') || ''
+    const sup = document.createElement('sup')
+    sup.setAttribute('style', 'font-size:11px;line-height:0;color:#2f8f8f;vertical-align:3px;')
+    sup.textContent = '[' + n + ']'
+    a.replaceWith(document.createTextNode(a.textContent), sup)
+
+    let show = href
+    try { show = decodeURI(href) } catch {}
+    const p = document.createElement('p')
+    p.setAttribute('style', 'margin:0 0 8px;font-size:14px;line-height:1.95;color:#1f1f1f;word-break:break-all;' + F)
+    p.innerHTML = '<span style="color:#a3a3a3">[' + n + ']</span>　　链接：' +
+                  '<span style="font-style:italic;color:#6f6f6f">' + esc(show) + '</span>'
+    box.appendChild(p)
+  })
+  return box.innerHTML
+}
+
 function render() {
-  view.innerHTML = marked.parse(src.value)
+  view.innerHTML = mdParse(src.value)
+  useLocalImages(view)
 
   // 行内公式的两件小事，对应 xeCJK 的 \xkanjiskip 与行首禁则：
   //   1. 贴着汉字的一侧补 0.18em 的缝（作者自己打了空格就不补，免得叠成两倍）
@@ -538,6 +1102,7 @@ function render() {
     throw e
   }
   numbering()
+  updateNumBtn()
   // 按源码顺序写进 style 属性，后写的覆盖先写的
   for (const r of rules) view.querySelectorAll(r.selectorText).forEach(el => { el.style.cssText += r.style.cssText })
   footnotes()
@@ -547,7 +1112,9 @@ function render() {
 // 知乎、X 都会过滤所有样式，只保留结构；公式由 mathNode 换成各平台认的东西
 function plain(mathNode) {
   const body = document.implementation.createHTMLDocument('').body
-  body.innerHTML = marked.parse(src.value)
+  body.innerHTML = mdParse(src.value)
+  body.querySelectorAll('a[title="inline"]').forEach(a => { a.removeAttribute('title'); a.classList.add('inline-link') })
+  useLocalImages(body)
   body.querySelectorAll('.math').forEach(m => m.replaceWith(mathNode(m, body.ownerDocument)))
   numbering(body)
   // 知乎不认 section，卡片换回引用块
@@ -575,10 +1142,24 @@ const zhihu = () => plain((m, doc) => {
 // 行间公式留「〔公式 n〕」占位，再到预览里点公式复制 PNG；行内公式转成文字，转不了的保留 TeX
 function xArticle() {
   let n = 0
-  return plain((m, doc) => {
+  const html = plain((m, doc) => {
     if (!m.dataset.display) return unicode(m.textContent.trim())
     const p = doc.createElement('p'); p.textContent = `〔公式 ${++n}〕`; return p
   })
+  // X 会把粘贴内容里的图片全部丢掉（外链、data:、SVG 都试过），所以换成占位，
+  // 让作者点预览里的图复制成 PNG，再粘到占位处
+  if (!/<img/i.test(html)) return html
+  const body = document.implementation.createHTMLDocument('').body
+  body.innerHTML = html
+  let k = 0
+  body.querySelectorAll('img').forEach(el => {
+    const p = body.ownerDocument.createElement('p')
+    p.textContent = `〔图 ${++k}〕`
+    const wrap = el.closest('p')
+    if (wrap && !wrap.textContent.trim()) wrap.replaceWith(p)
+    else el.replaceWith(p)
+  })
+  return body.innerHTML
 }
 
 const SYM = {
@@ -665,14 +1246,14 @@ function say(text) {
   setTimeout(() => msg.textContent === text && (msg.textContent = ''), 3000)
 }
 
-function copy(html, label) {
+function copy(html, label, note) {
   document.addEventListener('copy', e => {
     e.clipboardData.setData('text/html', html)
     e.clipboardData.setData('text/plain', src.value)
     e.preventDefault()
   }, { once: true })
   document.execCommand('copy')
-  say(`已复制，去${label}编辑器粘贴`)
+  say(`已复制，去${label}编辑器粘贴` + (note ? '；' + note : ''))
 }
 
 // 点预览里的公式 → 复制成 PNG，到 X 里 Ctrl+V 会直接上传。
@@ -716,7 +1297,7 @@ const KIND = {
   定理: 'theorem', 命题: 'proposition', 引理: 'lemma', 推论: 'corollary',
   结论: 'corollary', 定义: 'definition', 公理: 'axiom', 事实: 'fact',
   评注: 'remark', 注: 'remark', 例子: 'example', 例: 'example', 习题: 'example',
-  问题: 'question', 疑问: 'question'
+  问题: 'question', 疑问: 'question', 猜想: 'question'
 }
 
 // 旧稿 → 本编辑器语法
@@ -724,6 +1305,52 @@ const KIND = {
 // 块内行间公式独占一行（可能写成 ">$$…$$"），证明是块外普通正文、以 $\square$ 收尾，
 // 标题用 #/##/### 且不带编号，原样保留。
 // 没有可转换的块时原文返回，所以对 ::: 稿子是空操作。
+// 证明类标题的白名单。除了「证明」「证」，还有「另证」「别证」「反证」这些两字写法；
+// 「保证」「见证」「考证」不在表里，不会被当成证明卡
+const PROOF_WORDS = '证明(?:思路|要点|概要)?|另证|别证|新证|反证(?:法)?|补证|简证|再证|复证'
+const PROOF_RE = new RegExp('^(?:' + PROOF_WORDS + '|证)[一二三四五六七八九十\\d]*$')
+const isProofKey = s => {
+  const t = s.replace(/\+\+/g, '').trim()
+  return PROOF_RE.test(t) || /(?:^|的)证明[一二三四五六七八九十\d]*$/.test(t)
+}
+
+// 旧稿里的 {名字}：卡片标题末尾写 > **定理（Chevally）**{Chevally子商}，
+// 把它转成内部的 {#Chevally子商}（渲染时不显示），正文里同名的 {Chevally子商}
+// 转成 ++#Chevally子商++，渲染成「定理 2.3」。只认标题里声明过的名字，
+// 所以 \frac{a}{b}、$\{x\}$ 这类花括号不会被碰。
+function convertTags(text) {
+  const tags = new Set()
+  const lines = text.split('\n').map(l => {
+    let m = /^(\s*>\s*\*\*)([^*\n]+?)(\*\*)\{([^{}\n]+)\}/.exec(l)
+    if (m) {
+      const t = m[4].trim(); tags.add(t)
+      return m[1] + m[2] + '{#' + t + '}' + m[3] + l.slice(m[0].length)
+    }
+    m = /^(\s*\*\*)([^*\n]+?)(\*\*)\{([^{}\n]+)\}/.exec(l)
+    if (m) {
+      const t = m[4].trim(); tags.add(t)
+      return m[1] + m[2] + '{#' + t + '}' + m[3] + l.slice(m[0].length)
+    }
+    // 已经是 ::: 写法的稿子；带不带 # 都收，这样正文里写 {名字} 也能补成 ++#名字++
+    m = /^(:::[\w!-]+\s+[^\n{}]*?)\{#?([^{}\n#][^{}\n]*)\}\s*$/.exec(l)
+    if (m) {
+      const t = m[2].trim(); tags.add(t)
+      return m[1] + '{#' + t + '}'
+    }
+    return l
+  })
+  let out = lines.join('\n')
+  if (!tags.size) return out
+
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const names = [...tags].sort((a, b) => b.length - a.length).map(esc).join('|')
+  const re = new RegExp('\\{(' + names + ')\\}', 'g')
+  // 公式和行内代码里不替换
+  const parts = out.split(/(\$\$[\s\S]*?\$\$|\$[^$\n]*\$|`[^`\n]*`)/)
+  out = parts.map((p, i) => i % 2 ? p : p.replace(re, (m, n) => '++#' + n + '++')).join('')
+  return out
+}
+
 function convertLegacy(text) {
   const lines = text.replace(/\r\n?/g, '\n').split('\n')
   const out = []
@@ -746,9 +1373,22 @@ function convertLegacy(text) {
       const pm0 = /[（(]/.exec(key)
       if (pm0) { sub = key.slice(pm0.index).trim(); key = key.slice(0, pm0.index).trim() }
       key = key.replace(/[\s\d.：:]+$/, '').trim()
+      // 加粗标题里抽关键词：「Artin L 猜想」「强 Artin 猜想」这种名字在前的也认。
+      // 优先看结尾那个词（中文重心在末尾），单字的「注」「例」只认整串就是它的情况
+      const kwHit = s => {
+        if (isProofKey(s) || /证明/.test(s) || /^证(?:$|[：:、.．])/.test(s)) return { kind: 'proof', kw: '证明' }
+        const tail = Object.keys(KIND).filter(k => s.endsWith(k)).sort((a, b) => b.length - a.length)[0]
+        if (tail && (tail.length > 1 || s === tail)) return { kind: KIND[tail], kw: tail }
+        const inner = Object.keys(KIND).filter(k => k.length > 1 && s.includes(k))
+        if (inner.length) {
+          const k = inner.sort((a, b) => s.indexOf(a) - s.indexOf(b))[0]
+          return { kind: KIND[k], kw: k }
+        }
+        return null
+      }
       // 容错：卡片与它的行间公式之间被真空行（而不是 ">"）隔开时，
       // 把后续那段"首行不是 **词**"的引用块并回同一张卡片。
-      if (key && KIND[key]) {
+      if (key && (KIND[key] || kwHit(key))) {
         for (;;) {
           let k = i
           while (k < lines.length && lines[k].trim() === '') k++
@@ -773,10 +1413,14 @@ function convertLegacy(text) {
         sub = pm1[0]
         rest = rest.slice(sub.length).trim()
       }
-      const isProof = /证明$/.test(key)
-      if (isProof || (key && KIND[key])) {
+      const isProof = isProofKey(key)
+      const kk = key ? kwHit(key) : null
+      if (kk || isProof) {
         hits++
-        out.push(':::' + (isProof ? 'proof' : KIND[key]) + ' ' + key + sub)
+        // 标题原样保留，不重排、不拆名字：「Artin L 猜想」还是「Artin L 猜想」.
+        // 只把 $…$ 的美元符去掉——卡片标题是纯文本，留着 $ 会原样显示
+        const title = key.replace(/\$([^$\\{}]+)\$/g, '$1')
+        out.push(':::' + (isProof ? 'proof' : kk.kind) + ' ' + title + sub)
         if (rest) out.push(rest)
         for (const b of buf.slice(1)) out.push(b)
         out.push(':::')
@@ -787,10 +1431,10 @@ function convertLegacy(text) {
       continue
     }
 
-    const pm = /^\*\*([^*]*证明)[：:]?\*\*[ \t]*[：:]?[ \t]*(.*)$/.exec(line)
-    if (pm) {
+    const pm = /^\*\*([^*]{1,20})\*\*[ \t]*[：:]?[ \t]*(.*)$/.exec(line)
+    if (pm && isProofKey(pm[1])) {
       hits++
-      out.push(':::proof ' + pm[1].trim())
+      out.push(':::proof ' + pm[1].replace(/^\+\+|\+\+$/g, '').trim())
       const first = pm[2].trim()
       if (first) out.push(first)
       i++
@@ -817,13 +1461,11 @@ function convertLegacy(text) {
   return res.join('\n').trim() + '\n'
 }
 
-// 纯文本稿 → 本编辑器语法
-// 从网页、文档里复制出来的稿子丢了 # 和 **，只剩一段段纯文本，按段落的样子猜结构：
-//   「第2章 …」→ 一级标题；「2.1 …」→ 二级标题；没有句末标点的短段 → 加粗小标题；
-//   「定义 2.3（…）…」→ 卡片，连同紧跟的行间公式；「证明 …」→ 证明卡片，到 □ / 证毕为止；
-//   以「；」分隔的连续段落 → 列表；正文里的「定理 2.3」→ ++定理 2.3++。
-// 卡片类型带 !，保留稿子自己的编号。已有 Markdown 结构的段落（#、>、列表、:::、```、$$）
-// 原样保留，所以点多次不会重复转换。
+// 纯文本段落 → 本编辑器语法
+// 只做三件事：章节标题（第 2 章 / 2.1）、以「；」分隔的连续段落 → 列表、
+// 正文里的「定理 2.3」→ ++定理 2.3++.
+// 卡片一律不猜：纯文本里「定理 2.2 设 …」「强 Artin 猜想 设 …」「证 …」都按原样留着，
+// 卡片只由显式的加粗标题产生（`> **定理**` 或行首 `**定理**`），那部分在 convertLegacy 里处理.
 function convertPlain(text) {
   const L = text.replace(/\r\n?/g, '\n').split('\n')
   // 按空行切段；```…```、:::…:::、跨行的 $$…$$ 整块算一段
@@ -839,41 +1481,35 @@ function convertPlain(text) {
     i = k
   }
 
-  const isTitle = p => !p.includes('\n') && p.length <= 60 &&
-    !/[。．.，,：:；;！!？?、…]$/.test(p) && !/^([\s#>*+\-|<!\[$`:]|\d+[.)]\s)/.test(p)
+  // 判断前先剥掉隐形字符（零宽空格、BOM 等）和首尾空白。从网页/PDF 复制来的段落常带这些，
+  // 会让「第 2 章 …」「2.1 …」这类行首/行尾锚点匹不上
+  const clean = s => s.replace(/[\u200b-\u200f\u202a-\u202e\ufeff]/g, '').trim()
+  const isTitle = p => {
+    const t = clean(p)
+    return !t.includes('\n') && t.length <= 60 &&
+      !/[。．.，,：:；;！!？?、…]["'”’）)]?$/.test(t) && !/^([\s#>*+\-|<!\[$`:]|\d+[.)]\s)/.test(t)
+  }
+  // 只认两种标题：整行就是「第 X 章/部/篇」，或「1.2 标题」这种带小数点编号的
   const heading = p => {
     if (!isTitle(p)) return null
-    if (/^第\s*[\d一二三四五六七八九十百零]+\s*[章部篇]/.test(p)) return '# ' + p
-    const m = /^(\d+(?:\.\d+)+)\s*([^\d\s.].*)$/.exec(p)
+    const t = clean(p)
+    if (/^第\s*[\d一二三四五六七八九十百零]+\s*[章部篇]/.test(t)) return '# ' + t
+    const m = /^(\d+(?:\.\d+)+)\s*([^\d\s.].*)$/.exec(t)
     return m ? '## *' + m[1] + '* ' + m[2] : null
   }
-  const KEY = new RegExp('^(证明(?:思路|要点|概要)?|' + Object.keys(KIND).sort((a, b) => b.length - a.length).join('|') +
-    ')(\\s*\\d+(?:[.．]\\d+)*)?\\s*([（(][^）)\\n]{0,40}[）)])?\\s*([：:.．。]?)\\s*')
-  const head = p => {
-    // 「**定理 1.1**（…）设 …」：去掉加粗再认，加粗的部分必须整个是标题（「**定义域**」不算）
-    // 旧版会把加粗标题里的编号误包成「**++定义 2.3++（…）**」，去掉 ++ 再认
-    const b = /^\*\*([^*\n]+)\*\*/.exec(p), bt = b && b[1].replace(/\+\+/g, '')
-    if (b) p = bt + p.slice(b[0].length)
-    const m = KEY.exec(p)
-    if (!m || (b ? m[0].length < bt.length :!(m[2] || m[3] || m[4] || m[0].length === p.length))) return null   // 「注意」「定义域」不算
-    return { kind: KIND[m[1]] || 'proof', title: m[0].replace(/[\s：:.．。]+$/, ''), rest: p.slice(m[0].length) }
-  }
-  const stop = p => head(p) || heading(p) || /^(#|:::|```)/.test(p)
-  const END = /□|∎|\\square|\\blacksquare|\\Box|证毕/
-  // 段落（或公式）以句号收尾，陈述才算说完；行末的 \tag{2.4}、(2.9) 这类编号不算
-  const ended = p => /[。．.！!？?]$/.test(p.replace(/\$\$\s*$/, '').replace(/\\tag\{[^}]*\}/g, '').trim()
-    .replace(/\s*[（(][\d.]+[）)]$/, ''))
   let hits = 0
 
   // 正文里的「定理 2.3」包上 ++ 变成引用；跳过已有的 ++…++、公式和行内代码。
   // 单字的「注」「例」不认，太容易误伤（备注 1、比例 2）
-  const REF = new RegExp('(\\+\\+[^+\\n]*\\+\\+|\\$\\$[\\s\\S]*?\\$\\$|\\$[^$\\n]*\\$|`[^`\\n]*`)|((?:' +
+  // 段首的「定理 2.2」不包（那多半是卡片正文的开头，包起来反而像引用）；
+  // 只包句中出现的，比如「由定理 2.3 立得」
+  const REF = new RegExp('(?<!^)(\\+\\+[^+\\n]*\\+\\+|\\$\\$[\\s\\S]*?\\$\\$|\\$[^$\\n]*\\$|`[^`\\n]*`)|(?<!^)((?:' +
     Object.keys(KIND).filter(k => k.length > 1).join('|') + ')\\s*\\d+(?:[.．]\\d+)*)', 'g')
   const refs = s => s.replace(REF, (m, skip, ref) => skip ? m : (hits++, '++' + ref + '++'))
 
   // 以「；」结尾的段落和后面的段落是并列条目（最后一条以句号结尾），合成一个列表；
   // 每条都以（1）、1）、① 这类序号开头时用有序列表
-  const item = p => !stop(p) && !/^([\s#>*+\-|<!\[$`]|\d+[.)]\s)/.test(p)
+  const item = p => !heading(p) && !/^(#|:::|```)/.test(p) && !/^([\s#>*+\-|<!\[$`]|\d+[.)]\s)/.test(p)
   const ENUM = /^(?:[（(]\d+[）)]|\d+[）)、]|[①-⑳])\s*/
   for (let i = 0; i < paras.length; i++) {
     let k = i
@@ -886,36 +1522,203 @@ function convertPlain(text) {
   }
 
   const out = []
-  for (let i = 0; i < paras.length; i++) {
-    const p = paras[i], h = head(p)
-    if (!h) {
-      const t = heading(p)
-      if (t) { hits++; out.push(t) }
-      else if (/^(#|```)/.test(p)) out.push(p)
-      else if (/^:::/.test(p)) { const n = p.indexOf('\n'); out.push(p.slice(0, n) + refs(p.slice(n))) }   // 卡片标题行不加 ++
-      // 后面紧跟行间公式的短段是引导句（「损失函数为」），不是小标题
-      else if (isTitle(p) && !/^\$\$/.test(paras[i + 1] || '')) { hits++; out.push('**' + refs(p) + '**') }
-      else out.push(refs(p))
-      continue
-    }
-    hits++
-    const body = h.rest ? [h.rest] : []
-    const next = () => i + 1 < paras.length && !stop(paras[i + 1])
-    if (h.kind === 'proof') {
-      while (!END.test(body.join('\n')) && next()) body.push(paras[++i])
-    } else {
-      // 标题单独一行、「则：」后的列表、公式后接着的半句，都收进卡片
-      while (!(body.length && ended(body[body.length - 1])) && next()) body.push(paras[++i])
-      while (i + 1 < paras.length && /^\$\$/.test(paras[i + 1])) body.push(paras[++i])
-    }
-    out.push(':::' + h.kind + (h.kind === 'proof' ? ' ' : '! ') + h.title + '\n' + body.map(refs).join('\n\n') + '\n:::')
+  for (const p of paras) {
+    const t = heading(p)
+    if (t) { hits++; out.push(t) }
+    else if (/^(#|```)/.test(p)) out.push(p)
+    else if (/^:::/.test(p)) { const n = p.indexOf('\n'); out.push(p.slice(0, n) + refs(p.slice(n))) }   // 卡片标题行不加 ++
+    else out.push(refs(p))
   }
   return hits ? out.join('\n\n') + '\n' : text
 }
 
+// ── 一键取消 / 应用编号 ──
+// 取消 = 每张会编号的卡片在 kind 后加 !（:::theorem → :::theorem!）
+// 应用 = 去掉所有卡片上的 !
+// 证明（proof）和路标（sign）本来就不占号，两个方向都不动它们
+const NUM_SKIP = new Set(['proof', 'sign'])
+const NUM_HEAD = /^:::([A-Za-z\u4e00-\u9fa5][\w\u4e00-\u9fa5-]*)(!?)([ \t]+)/
+
+function scanNums(text) {
+  let cards = 0, off = 0
+  for (const line of text.split('\n')) {
+    const m = NUM_HEAD.exec(line)
+    if (!m || NUM_SKIP.has(m[1])) continue
+    cards++
+    if (!m[2]) off++
+  }
+  return { cards, off }
+}
+
+function updateNumBtn() {
+  const b = document.getElementById('num')
+  if (!b) return
+  const { cards, off } = scanNums(src.value)
+  b.textContent = cards && !off ? '应用编号' : '取消编号'
+  b.disabled = !cards
+  b.title = cards && !off
+    ? '去掉所有卡片上的 !，让它们重新参与编号'
+    : '给每张卡片加 !：不占号、标题里不显示编号'
+}
+
+function toggleNumbering() {
+  const { cards, off } = scanNums(src.value)
+  if (!cards) { say('稿子里还没有卡片'); return }
+  const apply = off === 0          // 全都关着，这次是「应用编号」
+  const out = src.value.split('\n').map(line => {
+    const m = NUM_HEAD.exec(line)
+    if (!m) return line
+    if (!apply && NUM_SKIP.has(m[1])) return line
+    return ':::' + m[1] + (apply ? '' : '!') + m[3] + line.slice(m[0].length)
+  }).join('\n')
+  if (out === src.value) return
+  const a = src.selectionStart, b = src.selectionEnd
+  src.value = out
+  afterEdit(Math.min(a, out.length), Math.min(b, out.length))
+  say(apply ? '已应用编号：去掉了所有卡片的 !' : '已取消编号：每张卡片都加了 !')
+}
+
+document.getElementById('num').onclick = toggleNumbering
+
+// ── 本地 Markdown 文件：打开 / 保存 / 自动保存 ──
+// 真正读写磁盘靠外壳的 fs 桥（Swift 那边的 WKScriptMessageHandler）。
+// 没有桥时退回 <input type=file>：能读内容，但拿不到路径，保存不了。
+let curPath = '', curName = '', savedText = null
+const fsBridge = () => (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.fs) || null
+
+function setFileLabel() {
+  const el = document.getElementById('file')
+  el.textContent = curName || '未命名'
+  el.title = curPath || '还没有关联本地文件'
+  const b = document.getElementById('save')
+  if (!b) return
+  b.disabled = !curPath
+  b.title = curPath ? '保存到 ' + curName + '（⌘S）' : '还没关联本地文件，先用「另存为」存成一个 md'
+}
+function markDirty(d) {
+  document.getElementById('file').classList.toggle('dirty', !!d && !!curName)
+}
+
+function loadDoc(text, path, name) {
+  src.value = text
+  curPath = path || ''
+  curName = name || ''
+  savedText = text
+  hist.stack = []; hist.at = -1; hist.last = 0
+  snap()
+  render()
+  markDirty(false)
+  setFileLabel()
+  try { localStorage.setItem('draft', text) } catch {}
+}
+
+function newDoc() {
+  const had = src.value.trim().length > 0
+  if (had) snap()                 // 旧内容留在历史里，⌘Z 能回来
+  src.value = ''
+  curPath = ''; curName = ''; savedText = ''
+  snap()
+  render()
+  setFileLabel()
+  markDirty(false)
+  try { localStorage.removeItem('draft') } catch {}
+  src.focus()
+  say(had ? '已新建，⌘Z 可以回到上一份' : '已新建')
+}
+
+function openFile() {
+  const b = fsBridge()
+  if (b) { b.postMessage({ cmd: 'open' }); return }
+  document.getElementById('mdFile').click()
+}
+
+function saveFile(saveAs) {
+  const b = fsBridge()
+  if (!b) { say('这个外壳不支持写入文件，请用「复制到公众号」备份'); return }
+  if (!saveAs && !curPath) { say('还没关联本地文件，请先用「另存为」'); return }
+  b.postMessage({ cmd: 'save', text: src.value, saveAs: !!saveAs })
+}
+
+document.getElementById('mdFile').onchange = e => {
+  const f = e.target.files && e.target.files[0]
+  if (!f) return
+  const fr = new FileReader()
+  fr.onload = () => { loadDoc(String(fr.result), '', f.name); say('已打开 ' + f.name + '（只读，保存需另存为）') }
+  fr.readAsText(f)
+  e.target.value = ''
+}
+
+window.__fsOpened = info => {
+  if (!info || info.error) { say('打开失败：' + ((info && info.error) || '未知错误')); return }
+  loadDoc(info.text, info.path, info.name)
+  say('已打开 ' + info.name)
+}
+window.__fsSaved = info => {
+  if (!info || info.error) { say('保存失败：' + ((info && info.error) || '未知错误')); return }
+  curPath = info.path; curName = info.name
+  savedText = src.value
+  markDirty(false); setFileLabel()
+  say('已保存 ' + info.name + '  ' + new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }))
+}
+
+// 有关联文件时，停手 1.2 秒自动写盘，防闪退丢稿
+let autoSaveTimer = null
+function scheduleAutoSave() {
+  markDirty(true)
+  if (!curPath) return
+  clearTimeout(autoSaveTimer)
+  autoSaveTimer = setTimeout(() => {
+    const b = fsBridge()
+    if (b && src.value !== savedText) b.postMessage({ cmd: 'save', text: src.value })
+  }, 1200)
+}
+
+// ── 格式行：把工具栏按钮接到已有的编辑函数上 ──
+function insertBlock(tpl, back) {
+  const a = src.selectionStart, b = src.selectionEnd
+  src.setRangeText(tpl, a, b, 'end')
+  const pos = a + tpl.length - back
+  afterEdit(pos, pos)
+}
+
+// 给选中的每一行加/去前缀（引用、列表）
+function prefixLines(prefix) {
+  const v = src.value, a = src.selectionStart, b = src.selectionEnd
+  const start = v.lastIndexOf('\n', a - 1) + 1
+  let end = v.indexOf('\n', b)
+  if (end < 0) end = v.length
+  const lines = v.slice(start, end).split('\n')
+  const all = lines.every(l => l.startsWith(prefix))
+  const out = lines.map(l => all ? l.slice(prefix.length) : prefix + l).join('\n')
+  src.setRangeText(out, start, end, 'end')
+  afterEdit(start, start + out.length)
+}
+
+const fmt = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn }
+fmt('fB', () => wrapMarks('**', '**', '加粗'))
+fmt('fI', () => wrapMarks('*', '*', '斜体'))
+fmt('fU', () => wrapMarks('<u>', '</u>', '下划线'))
+fmt('fS', () => wrapMarks('~~', '~~', '删除线'))
+fmt('fH1', () => togglePrefix('# '))
+fmt('fH2', () => togglePrefix('## '))
+fmt('fQuote', () => prefixLines('> '))
+fmt('fList', () => prefixLines('- '))
+fmt('fCode', () => wrapMarks('`', '`', '代码'))
+fmt('fCodeBlock', () => insertBlock('```\n\n```\n', 5))
+fmt('fMath', () => wrapMarks('$', '$', 'x'))
+fmt('fMathBlock', () => insertBlock('$$\n\n$$\n', 4))
+fmt('fLink', () => insertLink(true))
+fmt('fFoot', () => insertLink(false))
+
+document.getElementById('new').onclick = newDoc
+document.getElementById('open').onclick = openFile
+document.getElementById('save').onclick = () => saveFile(false)
+document.getElementById('saveAs').onclick = () => saveFile(true)
+setFileLabel()
+
 document.getElementById('conv').onclick = () => {
   const before = src.value
-  const after = convertPlain(convertLegacy(before))
+  const after = convertPlain(convertLegacy(convertTags(before)))
   const msg = document.getElementById('msg')
   if (before === after) { msg.textContent = '没有识别到可转换的结构'; return }
   // 用 insertText 替换全文，Ctrl+Z 能撤回；会触发 input，照常渲染和存草稿
@@ -925,15 +1728,455 @@ document.getElementById('conv').onclick = () => {
   msg.textContent = '已应用主题，不满意可以 Ctrl+Z 撤销'
 }
 
-document.getElementById('wx').onclick = () => copy(view.innerHTML, '公众号')
+document.getElementById('wx').onclick = () => {
+  const n = (src.value.match(/\[\[[^\[\]\n]+\]\]\(https?:\/\/[^)\s]*\)/g) || []).length
+  copy(wxArticle(), '公众号',
+    n ? `里面 ${n} 个行内超链接已临时转成脚注（源文件没动）` : '')
+}
 document.getElementById('zh').onclick = () => copy(zhihu(), '知乎')
-document.getElementById('x').onclick = () => copy(xArticle(), ' X ')
+document.getElementById('x').onclick = () => {
+  const pics = (src.value.match(/!\[[^\]]*\]\(img\d+\)/g) || []).length
+  copy(xArticle(), ' X ', pics ? `里面有 ${pics} 张图，要逐张点预览里的图复制后粘到〔图 n〕处` : '')
+}
+
+// ── 查找（⌘F / Ctrl+F）：搜左边源码，命中就选中并把源码滚过去 ──
+const findBar = document.getElementById('find')
+const findQ = document.getElementById('findQ')
+const findN = document.getElementById('findN')
+let findHits = [], findAt = -1
+
+// textarea 没有 scrollIntoView，按「到这一步为止有几个换行」估位置
+function scrollSrcTo(pos) {
+  const line = src.value.slice(0, pos).split('\n').length - 1
+  const lh = parseFloat(getComputedStyle(src).lineHeight) || 24
+  src.scrollTop = Math.max(0, line * lh - src.clientHeight / 2 + lh)
+}
+
+function paintFind() {
+  if (!findHits.length) { findN.textContent = findQ.value ? '无' : ''; return }
+  findN.textContent = (findAt + 1) + '/' + findHits.length
+  const p = findHits[findAt]
+  src.setSelectionRange(p, p + findQ.value.length)
+  scrollSrcTo(p)
+}
+
+function runFind(reset) {
+  const q = findQ.value, S = src.value
+  findHits = []
+  if (q) {
+    const low = S.toLowerCase(), ql = q.toLowerCase()
+    let i = low.indexOf(ql)
+    while (i >= 0) { findHits.push(i); i = low.indexOf(ql, i + Math.max(1, ql.length)) }
+  }
+  findAt = findHits.length ? (reset ? 0 : Math.min(Math.max(findAt, 0), findHits.length - 1)) : -1
+  paintFind()
+}
+
+function stepFind(dir) {
+  if (!findHits.length) return
+  findAt = (findAt + dir + findHits.length) % findHits.length
+  paintFind()
+}
+
+function openFind() {
+  findBar.classList.add('on')
+  const sel = src.value.slice(src.selectionStart, src.selectionEnd).trim()
+  if (sel && sel.length <= 40 && !sel.includes('\n')) findQ.value = sel
+  findQ.focus()
+  findQ.select()
+  runFind(true)
+}
+
+function closeFind() {
+  findBar.classList.remove('on')
+  src.focus()
+}
+
+findQ.oninput = () => runFind(true)
+document.getElementById('findNext').onclick = () => stepFind(1)
+document.getElementById('findPrev').onclick = () => stepFind(-1)
+document.getElementById('findClose').onclick = closeFind
+
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === 'f' || e.key === 'F')) {
+    e.preventDefault()
+    openFind()
+    return
+  }
+  if (!findBar.classList.contains('on')) return
+  if (e.key === 'Escape') { e.preventDefault(); closeFind() }
+  else if (e.key === 'Enter') { e.preventDefault(); stepFind(e.shiftKey ? -1 : 1) }
+})
+
+// ── 双击预览 → 左边跳到并选中对应的源码 ──
+// 把源码里的 $…$ / $$…$$ 抠掉，得到和渲染文本对得上的字符串，并记下每个字符在源码里的位置
+function flatten() {
+  const S = src.value
+  let out = ''
+  const map = []
+  let i = 0
+  while (i < S.length) {
+    if (S[i] === '$') {
+      const dbl = S[i + 1] === '$'
+      const end = dbl ? S.indexOf('$$', i + 2) : S.indexOf('$', i + 1)
+      if (end > i) { i = end + (dbl ? 2 : 1); continue }
+    }
+    // 连续空白压成一个空格（和渲染出来的 textContent 对齐），记得同步跳过 map
+    if (/\s/.test(S[i])) {
+      if (!/\s$/.test(out)) { out += ' '; map.push(i) }
+      i++
+      continue
+    }
+    out += S[i]
+    map.push(i)
+    i++
+  }
+  return { out, map }
+}
+
+// 渲染出来的那段文字 → 源码里的 [start, end)。公式在渲染文本里是空的，
+// 所以拿 flatten() 的「去公式源码」去配，再用 map 换回真实下标
+function srcRangeFor(text, blockText) {
+  const t = String(text || '').replace(/\s+/g, ' ').trim()
+  if (!t) return null
+  const { out, map } = flatten()
+  const cand = []
+  let i = out.indexOf(t)
+  while (i >= 0 && cand.length < 200) { cand.push(i); i = out.indexOf(t, i + 1) }
+  if (!cand.length) return null
+  let p = cand[0]
+  if (cand.length > 1 && blockText) {
+    const anchor = out.indexOf(String(blockText).replace(/\s+/g, ' ').trim().slice(0, 12))
+    if (anchor >= 0) p = cand.reduce((a, b) => Math.abs(b - anchor) < Math.abs(a - anchor) ? b : a, cand[0])
+  }
+  if (map[p] == null) return null
+  return { start: map[p], end: (map[p + t.length - 1] ?? map[p]) + 1 }
+}
+
+// 在预览里选中一段（不是双击）→ 左边跟着选中同一段。
+// 左边是 textarea，不聚焦就不画选区，所以这里要抢一下焦点，再把右边那段选区补回去
+let syncing = false, lastSelText = ''
+function syncFromView() {
+  if (syncing) return
+  const sel = window.getSelection()
+  if (!sel || sel.isCollapsed || !sel.rangeCount) return
+  const r = sel.getRangeAt(0)
+  if (!view.contains(r.startContainer)) return
+  const node = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement
+  const block = node && node.closest('p, li, td, th, h1, h2, h3, section.markdown-alert')
+  const picked = sel.toString()
+  const hit = srcRangeFor(picked, block ? block.textContent : '')
+  if (!hit) return
+  lastSelText = picked.trim()   // 抢焦点会把右边的选区清掉，留一份给双击那条路用
+  // 注意：给 textarea 上焦点会清掉右边的选区高亮，这是浏览器的行为，没法两全；
+  // 所以只在拖选结束（mouseup）时才抢焦点，拖的过程中不动
+  syncing = true
+  src.focus()
+  src.setSelectionRange(hit.start, hit.end)
+  scrollSrcTo(hit.start)
+  setTimeout(() => { syncing = false }, 0)
+}
+
+let syncTimer, dragging = false
+document.addEventListener('mousedown', () => { dragging = true })
+document.addEventListener('mouseup', () => {
+  if (!dragging) return
+  dragging = false
+  syncFromView()
+})
+document.addEventListener('selectionchange', () => {
+  if (syncing || dragging) return
+  clearTimeout(syncTimer)
+  syncTimer = setTimeout(syncFromView, 150)
+})
+
+view.addEventListener('dblclick', e => {
+  // 双击的第二次 mouseup 可能已经把右边选区交给了左边，这时退回上次记下的那段字
+  const word = String(window.getSelection() || '').trim() || lastSelText
+  const block = e.target.closest('p, li, td, th, h1, h2, h3') || e.target.closest('section.markdown-alert') || view
+  const text = (block.textContent || '').replace(/\s+/g, ' ').trim()
+  const S = src.value
+
+  // 先按选中的词找；词出现多次时，用这一段开头那几个字挑最近的一处
+  const cand = []
+  if (word && word.length <= 40) {
+    let i = S.indexOf(word)
+    while (i >= 0 && cand.length < 500) { cand.push(i); i = S.indexOf(word, i + 1) }
+  }
+  let start = -1, len = 0
+  if (cand.length) {
+    start = cand[0]; len = word.length
+    if (cand.length > 1) {
+      const anchor = S.indexOf(text.slice(0, 12))
+      if (anchor >= 0) start = cand.reduce((p, c) => Math.abs(c - anchor) < Math.abs(p - anchor) ? c : p, cand[0])
+    }
+  } else if (text) {
+    // 点在公式、图标这种选不中文字的地方：退一步定位整段。
+    // 渲染出来的文本里公式是空的，所以要拿「去掉 $…$ 的源码」来对，
+    // 再用 map 换算回真实下标，这样连公式一起选中
+    const { out, map } = flatten()
+    for (const n of [40, 28, 18, 12, 8]) {
+      const head = text.slice(0, n)
+      const p = out.indexOf(head)
+      if (p >= 0 && map[p] != null) {
+        start = map[p]
+        len = (map[p + head.length - 1] ?? map[p]) - start + 1
+        break
+      }
+    }
+  }
+  if (start < 0) return
+  src.focus()
+  src.setSelectionRange(start, start + len)
+  scrollSrcTo(start)
+})
+
+// ── 快捷键：加粗、斜体、下划线、删除线、代码、链接、公式、标题 ──
+function afterEdit(a, b) {
+  src.focus()
+  if (a != null) src.setSelectionRange(a, b)
+  snap()
+  render()
+  try { localStorage.setItem('draft', src.value) } catch {}
+}
+
+// 给选区套一对记号；已经套着就取消（再按一次退回），没选区就先放占位字
+function wrapMarks(open, close, placeholder) {
+  const v = src.value, a = src.selectionStart, b = src.selectionEnd
+  const sel = v.slice(a, b)
+  // 记号在选区外侧（光标就在 **｜** 中间，或选中了里面的字）
+  const outOpen = a >= open.length && v.slice(a - open.length, a) === open
+  const outClose = v.slice(b, b + close.length) === close
+  if (outOpen && outClose && !sel.startsWith(open)) {
+    src.setRangeText(sel, a - open.length, b + close.length, 'end')
+    return afterEdit(a - open.length, a - open.length + sel.length)
+  }
+  // 记号被一起选中了
+  if (sel.length >= open.length + close.length && sel.startsWith(open) && sel.endsWith(close)) {
+    const inner = sel.slice(open.length, sel.length - close.length)
+    src.setRangeText(inner, a, b, 'end')
+    return afterEdit(a, a + inner.length)
+  }
+  const body = sel || placeholder
+  src.setRangeText(open + body + close, a, b, 'end')
+  const s = a + open.length
+  return afterEdit(s, s + body.length)
+}
+
+// 行首加/去 # 号；已有别的级别就先抹平
+function togglePrefix(prefix) {
+  const v = src.value
+  const a = v.lastIndexOf('\n', src.selectionStart - 1) + 1
+  let b = v.indexOf('\n', src.selectionEnd)
+  if (b < 0) b = v.length
+  const lines = v.slice(a, b).split('\n')
+  const has = lines.every(l => l.startsWith(prefix))
+  const next = lines.map(l => {
+    const bare = l.replace(/^#{1,6}\s+/, '')
+    return has ? bare : prefix + bare
+  }).join('\n')
+  src.setRangeText(next, a, b, 'end')
+  return afterEdit(a, a + next.length)
+}
+
+// 链接：[选中的字]()，光标落进括号里
+// inline=false 走脚注 [文字](url)；inline=true 走行内超链接 [[文字]](url)
+function insertLink(inline) {
+  const v = src.value, a = src.selectionStart, b = src.selectionEnd
+  const sel = v.slice(a, b)
+  const text = sel || '文字'
+  const url = 'https://'
+  const md = (inline ? '[[' : '[') + text + (inline ? ']]' : ']') + '(' + url + ')'
+  src.setRangeText(md, a, b, 'end')
+  // 有选区：选中 https:// 让你直接粘地址；没选区：选中「文字」让你直接改标题
+  const head = (inline ? '[[' : '[').length
+  if (sel) {
+    const s0 = a + head + text.length + head + 1
+    return afterEdit(s0, s0 + url.length)
+  }
+  return afterEdit(a + head, a + head + text.length)
+}
+
+// ── 撤销 / 重做：自己记历史，快捷键改的字也进栈 ──
+// 浏览器原生的撤销对 setRangeText 这类程序化改动不一定管用，所以自己存快照
+const hist = { stack: [], at: -1, lock: false, last: 0 }
+function snap() {
+  if (hist.lock) return
+  const cur = { v: src.value, a: src.selectionStart, b: src.selectionEnd }
+  const top = hist.stack[hist.at]
+  if (top && top.v === cur.v) { top.a = cur.a; top.b = cur.b; return }
+  hist.stack = hist.stack.slice(0, hist.at + 1)
+  hist.stack.push(cur)
+  if (hist.stack.length > 300) hist.stack.shift()
+  hist.at = hist.stack.length - 1
+  hist.last = Date.now()
+}
+function restore(s) {
+  hist.lock = true
+  src.value = s.v
+  src.setSelectionRange(s.a, s.b)
+  render()
+  try { localStorage.setItem('draft', src.value) } catch {}
+  hist.lock = false
+}
+function undo() {
+  if (hist.at <= 0) return
+  hist.at--
+  restore(hist.stack[hist.at])
+}
+function redo() {
+  if (hist.at >= hist.stack.length - 1) return
+  hist.at++
+  restore(hist.stack[hist.at])
+}
+
+document.addEventListener('keydown', e => {
+  if (!(e.metaKey || e.ctrlKey) || e.altKey) return
+  const k = e.key.toLowerCase()
+  const take = () => e.preventDefault()
+  // 存盘和打开不挑焦点：光标在预览里、刚点完按钮，也要能按
+  if (k === 's') { take(); saveFile(e.shiftKey); return }
+  if (k === 'o') { take(); openFile(); return }
+  if (k === 'n' && !e.shiftKey) { take(); newDoc(); return }
+  if (document.activeElement !== src) return
+  if (k === 'z' && !e.shiftKey) { take(); undo(); return }
+  if ((k === 'z' && e.shiftKey) || k === 'y') { take(); redo(); return }
+  if (k === 'b' && !e.shiftKey) { take(); wrapMarks('**', '**', '加粗') }
+  else if (k === 'i' && !e.shiftKey) { take(); wrapMarks('*', '*', '斜体') }
+  else if (k === 'u') { take(); wrapMarks('<u>', '</u>', '下划线') }
+  else if (k === 'x' && e.shiftKey) { take(); wrapMarks('~~', '~~', '删除线') }   // ⌘S 让给存盘了
+  else if (k === 'e') { take(); wrapMarks('`', '`', '代码') }
+  else if (k === 'k') { take(); insertLink(!e.shiftKey) }   // ⌘K 行内超链接，⌘⇧K 脚注
+  else if (k === 'm' && e.shiftKey) { take(); wrapMarks('$', '$', 'x') }
+  else if (k === 'n' && e.shiftKey) { take(); toggleNumbering() }
+  else if (k === '1') { take(); togglePrefix('# ') }
+  else if (k === '2') { take(); togglePrefix('## ') }
+})
+
+// ── 本地图片：拖进来 / 选文件 / Ctrl+V 都行，源码里只留 ![说明](img1)，真图另存 ──
+const IMG = {}
+try { Object.assign(IMG, JSON.parse(localStorage.getItem('imgs') || '{}')) } catch {}
+let imgSeq = Object.keys(IMG).length
+
+function saveImgs() {
+  try { localStorage.setItem('imgs', JSON.stringify(IMG)); return true }
+  catch { say('图片太多，本地存不下了：刷新后这些图会丢，请先把文章复制出去'); return false }
+}
+
+// 渲染时把 imgN 换成真的 data URL —— 复制到公众号时带的就是真图
+function useLocalImages(root) {
+  root.querySelectorAll('img').forEach(el => {
+    const k = (el.getAttribute('src') || '').trim()
+    if (/^img\d+$/.test(k) && IMG[k]) el.setAttribute('src', IMG[k])
+  })
+}
+
+// 大图先缩到 1800px 宽，转不掉的再压成 JPEG：微信对超大图不友好，localStorage 也装不下原图
+function shrink(file) {
+  return new Promise(resolve => {
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type) || file.size < 600 * 1024) return resolve(file)
+    const url = URL.createObjectURL(file)
+    const base = (file.name || '图').replace(/\.[^.]+$/, '')
+    const im = new Image()
+    im.onload = () => {
+      const k = Math.min(1, 1800 / im.naturalWidth)
+      const cv = document.createElement('canvas')
+      cv.width = Math.round(im.naturalWidth * k)
+      cv.height = Math.round(im.naturalHeight * k)
+      const g = cv.getContext('2d')
+      // 转 JPEG 时透明区会变黑，先铺白底
+      if (file.type !== 'image/png') { g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height) }
+      g.drawImage(im, 0, 0, cv.width, cv.height)
+      const done = b => { URL.revokeObjectURL(url); resolve(b || file) }
+      cv.toBlob(b => {
+        if (!b) return done(file)
+        if (b.size <= 900 * 1024) return done(new File([b], base + (file.type === 'image/png' ? '.png' : '.jpg'), { type: b.type }))
+        // 还是太大：铺白底重画，压成 JPEG
+        const g2 = cv.getContext('2d')
+        g2.fillStyle = '#fff'
+        g2.fillRect(0, 0, cv.width, cv.height)
+        g2.drawImage(im, 0, 0, cv.width, cv.height)
+        cv.toBlob(b2 => done(new File([b2 || b], base + '.jpg', { type: 'image/jpeg' })), 'image/jpeg', 0.88)
+      }, file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.92)
+    }
+    im.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
+    im.src = url
+  })
+}
+
+async function addImage(file) {
+  file = await shrink(file)
+  return new Promise(resolve => {
+    const fr = new FileReader()
+    fr.onload = () => {
+      const key = 'img' + (++imgSeq)
+      IMG[key] = fr.result
+      saveImgs()
+      const a = src.selectionStart, b = src.selectionEnd
+      const name = (file.name || '图').replace(/\.[^.]+$/, '')
+      const md = '![' + name + '](' + key + ')\n'
+      src.setRangeText(md, a, b, 'end')
+      afterEdit(a + md.length, a + md.length)
+      resolve()
+    }
+    fr.readAsDataURL(file)
+  })
+}
+
+const picFile = document.getElementById('picFile')
+picFile.onchange = async () => {
+  for (const f of picFile.files) if (/^image\//.test(f.type)) await addImage(f)
+  picFile.value = ''
+}
+src.addEventListener('dragover', e => e.preventDefault())
+src.addEventListener('drop', e => {
+  const f = [...(e.dataTransfer.files || [])].find(x => /^image\//.test(x.type))
+  if (!f) return
+  e.preventDefault()
+  addImage(f)
+})
+src.addEventListener('paste', e => {
+  const it = [...((e.clipboardData && e.clipboardData.items) || [])].find(i => i.type.startsWith('image/'))
+  if (!it) return
+  e.preventDefault()
+  addImage(it.getAsFile())
+})
+
+// 点预览里的图片 → 复制成 PNG，去公众号对应位置 Ctrl+V（微信不吃 base64 时的兜底）
+view.addEventListener('click', e => {
+  const el = e.target.closest && e.target.closest('#view img')
+  if (!el || !/^data:image\//.test(el.src)) return
+  const url = el.src
+  const png = fetch(url).then(r => r.blob()).then(async blob => {
+    if (blob.type === 'image/png') return blob
+    const im = new Image()
+    im.src = url
+    await im.decode()
+    const cv = document.createElement('canvas')
+    cv.width = im.naturalWidth
+    cv.height = im.naturalHeight
+    cv.getContext('2d').drawImage(im, 0, 0)
+    return await new Promise(ok => cv.toBlob(ok, 'image/png'))
+  })
+  navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
+    .then(() => say('已复制这张图，去公众号里 Ctrl+V'))
+    .catch(err => say('复制图片失败：' + err.message))
+})
 
 let timer
 src.oninput = () => {
+  // 连打的字合并成一条：600ms 内的普通输入不新开快照
+  const now = Date.now()
+  // 连打合并成一条；但基础快照（第 0 条）不能覆盖，否则第一次改动就没得撤了
+  if (now - hist.last > 600 || hist.at <= 0) snap()
+  else {
+    const top = hist.stack[hist.at]
+    if (top) { top.v = src.value; top.a = src.selectionStart; top.b = src.selectionEnd } else snap()
+  }
   clearTimeout(timer)
   timer = setTimeout(render, 200)
   try { localStorage.setItem('draft', src.value) } catch {}
+  scheduleAutoSave()
 }
 
 try { src.value = localStorage.getItem('draft') || '' } catch {}
@@ -951,6 +2194,7 @@ $$
 其余类型（proof、example……）都是灰色卡片. 交叉引用写成 ++定理 2.2++.
 :::
 `
+snap()
 MathJax.startup.promise.then(render)
 </script>
 </body>
