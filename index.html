@@ -109,6 +109,27 @@ main { flex: 1; display: flex; min-height: 0; }
 }
 .sx .box > div { width: 375px; margin: 0 auto; zoom: .84; background: #fff; padding: 10px 12px; }
 .sxtip { margin-top: 12px; font-size: 12px; color: #6b6d78; line-height: 1.8; }
+.sxload { color: #8a8c96; font-size: 12px; padding: 14px 0; }
+.sxlist { margin-top: 10px; border-top: 1px solid #eceef2; }
+.sxr { padding: 13px 0 15px; border-bottom: 1px solid #f1f2f5; }
+.sxr .hd { display: flex; align-items: baseline; gap: 8px; margin-bottom: 7px; }
+.sxr .no { font: 700 11px ui-monospace, Menlo, monospace; color: #b9bcc6; }
+.sxr .hd b { font-size: 13px; }
+.sxr .note { font-size: 12px; color: #7a7c86; }
+.sxr .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.sxr .tag { font-size: 11px; color: #a0a2ac; margin: 0 0 4px; }
+.sxr .tag + .tag { margin-top: 8px; }
+.sxr pre {
+  margin: 0; max-height: 108px; overflow: auto; padding: 8px 10px;
+  background: #f7f8fa; border: 1px solid #e4e6ec; border-radius: 6px;
+  font: 11.5px/1.6 ui-monospace, Menlo, Consolas, monospace; color: #33363d; white-space: pre-wrap;
+}
+.sxr .box {
+  max-height: 210px; overflow: auto; padding: 8px 4px 12px;
+  background: #fbfbfc; border: 1px solid #e4e6ec; border-radius: 8px;
+}
+.sxr .pair { align-items: start; }
+.sxr .box > div { width: 375px; margin: 0 auto; zoom: .8; background: #fff; padding: 8px 10px; }
 .sxrow { display: flex; gap: 8px; align-items: center; margin: -4px 0 4px; }
 .sxrow button { padding: 6px 13px; border: 1px solid #ccc; border-radius: 6px; background: #fff; font-size: 13px; cursor: pointer; }
 .sxrow button:hover { border-color: #2f6b3b; color: #2f6b3b; }
@@ -610,27 +631,11 @@ img {
     <div class="ver">点一次「应用主题」，左边就变成右边；卡片、编号、引用、脚注都会跟着重排.</div>
 
     <div class="sxrow">
-      <button id="sxOpenMd">在编辑器里打开这份示例</button>
-      <button id="sxOpenPdf">打开对照 PDF</button>
+      <button id="sxOpenMd">在编辑器里打开完整示例</button>
       <span id="sxNote" class="sxnote"></span>
     </div>
 
-
-    <div class="sx">
-      <div class="col">
-        <div class="tag">转换前 · 源码</div>
-        <pre id="sxOldCode"></pre>
-        <div class="tag">转换前 · 渲染效果</div>
-        <div class="box"><div id="sxOldView"></div></div>
-      </div>
-      <div class="col">
-        <div class="tag">转换后 · 源码</div>
-        <pre id="sxNewCode"></pre>
-        <div class="tag">转换后 · 渲染效果</div>
-        <div class="box"><div id="sxNewView"></div></div>
-      </div>
-    </div>
-
+    <div id="sxList" class="sxlist"><p class="sxload">正在渲染示例…</p></div>
     <p class="sxtip">能认的写法：<code>&gt; **定理（Chevally）**{名字}</code>、<code>&gt; **证明**</code>、<code>**另证**</code>、<code># 3 标题</code>、<code>2.1 标题</code>、正文里的 <code>{名字}</code> 与 <code>++定理 2.2++</code>、<code>[文字](url "注释")</code>、<code>[[文字]](url)</code>. 认不出的原样保留.</p>
   </div>
 </div>
@@ -771,30 +776,42 @@ document.getElementById('closePanel').onclick = () => document.getElementById('p
 document.getElementById('closeUp').onclick = () => document.getElementById('upPanel').classList.remove('on');
 
 // 示例：同一段旧稿，转换前 / 转换后各渲染一遍（用同一套 paint，颜色和编号都是真的）
-const SAMPLE_OLD = `# 1 预备
-
-> **定理（Chevally）**{Chevally子商} 设 $G$ 是有限群，$H\\le G$ 是子群.
-
-**另证** 由 {Chevally子商} 立得，换一个角度. $\\square$
-`
+// 示例：逐条列出转换规则，每条左边是原写法、右边是转换后的写法，两边都是真实渲染
+const SAMPLE_RULES = [["卡片：加粗标题", "引用块里的加粗标题会被认成卡片；花括号里的名字当引用名，不显示。", "> **定理（Chevally）**{Chevally子商} 设 $G$ 是有限群."], ["卡片：证明类", "证明、另证、别证、反证、证，都收成证明卡；它们不占编号。", "> **证明** 由引理立得. $\\square$\n\n**另证** 换一个角度. $\\square$"], ["卡片：其余类型", "定义、引理、命题、推论、评注、例、注、问题、公理、事实，各归各类。", "> **定义（单子）** 三元组 $(T,\\eta,\\mu)$.\n\n> **引理** 略.\n\n> **评注** 这只是评注."], ["卡片：名字写在前面", "标题里只要含类型词就认；名字在前的按原样保留，不拆。", "> **Artin $L$ 猜想** 若 $\\rho$ 非平凡，则 $L(\\rho,s)$ 全纯."], ["编号：手写节号优先", "标题开头的数字直接当节号，卡片编号跟着走；手写的旧编号会被重算。", "# 3 表示论输入\n\n> **定理 2.2** 设 $G$ 是有限群.\n\n> **引理 2.3** 略."], ["引用：花括号名字", "正文里写 {名字}，转换成 ++#名字++，渲染成当前编号。", "> **定理（Chevally）**{Chevally子商} 设 $G$ 是有限群.\n\n由 {Chevally子商} 立得."], ["引用：旧编号", "正文手写的「定理 1.1」会先按旧号换新号，再核对卡片类型。", "> **定理（Peter–Weyl）** 矩阵系数在 $C(G)$ 中稠密.\n\n> **定理（Tannaka）** 由 ++定理 1.1++ 立得."], ["标题：章与节", "「第 2 章 …」升为一级标题，「2.1 …」升为二级标题。", "第 2 章 表示论\n\n2.1 基本定义\n\n正文字."], ["列表：分号条目", "连续几段都以「；」收尾时，合成一个无序列表。", "表示环由不可约表示生成；\n\n复化对应 $\\mathbb{C}\\otimes\\mathfrak{g}$；\n\n纤维函子忠实且正合."], ["引用：段中补链", "正文中间的「定理 1.1」会包成引用；段首的那个不动。", "> **定理（Tannaka）** 略.\n\n由定理 1.1 立得，定理 1.1 的证明见下."]]
 let sampleReady = false
+function buildSamples() {
+  const list = document.getElementById('sxList')
+  list.innerHTML = ''
+  SAMPLE_RULES.forEach(([title, note, before], i) => {
+    const after = convertPlain(convertLegacy(convertTags(before)))
+    const el = document.createElement('div')
+    el.className = 'sxr'
+    el.innerHTML = '<div class="hd"><span class="no">' + String(i + 1).padStart(2, '0') +
+      '</span><b>' + esc(title) + '</b><span class="note">' + esc(note) + '</span></div>' +
+      '<div class="pair">' +
+      '<div class="col"><div class="tag">转换前 · 源码</div><pre></pre>' +
+      '<div class="tag">转换前 · 渲染</div><div class="box"><div class="v"></div></div></div>' +
+      '<div class="col"><div class="tag">转换后 · 源码</div><pre></pre>' +
+      '<div class="tag">转换后 · 渲染</div><div class="box"><div class="v"></div></div></div>' +
+      '</div>'
+    const pres = el.querySelectorAll('pre')
+    pres[0].textContent = before.trim()
+    pres[1].textContent = after.trim()
+    list.appendChild(el)
+    const vs = el.querySelectorAll('.v')
+    paint(vs[0], before)
+    paint(vs[1], after)
+  })
+  sampleReady = true
+}
 function openSample() {
   openOverlay(document.getElementById('samplePanel'))
   if (sampleReady) return
-  sampleReady = true
-  const oldTxt = SAMPLE_OLD.trim() + '\n'
-  const newTxt = convertPlain(convertLegacy(convertTags(oldTxt)))
-  document.getElementById('sxOldCode').textContent = oldTxt
-  document.getElementById('sxNewCode').textContent = newTxt
-  paint(document.getElementById('sxOldView'), oldTxt)
-  paint(document.getElementById('sxNewView'), newTxt)
+  setTimeout(buildSamples, 20)
 }
 // 完整示例（旧格式原文）直接内嵌：打开时是一份副本，不关联磁盘文件，
 // 所以点「应用主题」不会把桌面那份源文件改掉。
 const SAMPLE_FULL = "# 0 引言\n\n在调和分析中，Pontryagin 对偶建立了局部紧 Abel 群与其特征群的对应关系. 具体而言，设 $G$ 是一个局部紧 Abel 群，其对偶群定义为 $\\widehat{G}=\\operatorname{Hom}_{\\mathrm{cont}}(G,\\mathbb{T})$，其中 $\\mathbb{T}=\\{z\\in\\mathbb{C}\\mid |z|=1\\}$，并赋予紧开拓扑. Pontryagin 对偶定理断言，自然的赋值同态 $\\alpha\\colon G\\to\\widehat{\\widehat{G}}$ 是拓扑群同构.\n\n对于非交换紧群 $G$，一维特征标不足以捕捉群的结构，因为特征标在导群上是平凡的. 重构 $G$ 需要引入其有限维连续表示范畴 $\\operatorname{Rep}(G)$，这就是 Tannaka 对偶的动机. Tannaka 在 1938 年的工作 [Tannaka](https://example.org/tannaka1938) 中预见到，表示范畴的张量结构足以确定原群；当时范畴论尚未建立，他用算子族的语言叙述结论.\n\n# 1 紧 Lie 群的 Tannaka 理论\n\n本节固定一个紧 Lie 群 $G$，参考 [Bröcker–tom Dieck](https://example.org/bd \"第 II 章，代表函数与 Peter–Weyl 定理\").\n\n## 1.1 代表函数\n\n对 $V\\in\\operatorname{Rep}(G)$ 与 $f\\in V^\\vee$、$v\\in V$，令 $d_{f,v}(g)=f(gv)$，并定义线性映射\n\n$$\ns_V\\colon V^\\vee\\otimes_{\\mathbb{K}}V\\to C(G,\\mathbb{K}),\\qquad f\\otimes v\\mapsto d_{f,v}.\n$$\n\n它与左右平移作用相容：$L(g,d_{f,v})=d_{g\\cdot f,v}$，$R(g,d_{f,v})=d_{f,gv}$，因此像 $S(V)=\\mathrm{Im}(s_V)$ 是 $(C(G,\\mathbb{K}),L)$ 的有限维 $G$-不变子空间.\n\n> **定义（代表函数）**{代表函数} 称 $f\\in C(G,\\mathbb{K})$ 为代表函数，若它生成 $(C(G,\\mathbb{K}),L)$ 的一个有限维 $G$-不变子空间. 全体代表函数记作 $\\mathcal{R}(G,\\mathbb{K})$.\n\n> **定理（Peter–Weyl）** 矩阵系数在 $C(G,\\mathbb{K})$ 中稠密；等价地，$\\mathcal{R}(G,\\mathbb{K})$ 在 $C(G,\\mathbb{K})$ 中稠密，且 $\\mathcal{R}(G,\\mathbb{C})$ 在共轭下封闭.\n\n> **命题** $\\mathcal{R}(G,\\mathbb{K})$ 是 $C(G,\\mathbb{K})$ 的 $\\mathbb{K}$-子代数.\n\n> **证明** 设 $f$ 为代表函数，它生成 $(C(G,\\mathbb{K}),R)$ 的有限维子空间 $V$. 取 $V$ 的基 $e_1,\\dots,e_n$ 与对偶基 $e_1^*,\\dots,e_n^*$，写 $R(g,f)=\\sum_{j}a_j(g)e_j$，则由 $s_V$ 的定义 $a_j(g)=s_V(e_j^*,f)(g)$. 于是对每个 $g\\in G$ 有\n>\n> $$\n> f(g)=R(g,f)(1)=\\sum_{j=1}^{n}s_V(e_j^*,f)(g)\\,e_j(1),\n> $$\n>\n> 故 $f\\in S(V)$. 而 $S(V)$ 有限维且 $L$-不变，所以 $f$ 生成的 $L$-不变子空间也有限维，第一个断言成立. 至于第二个断言，只需考虑矩阵系数：直和、张量积与对偶表示说明 $\\mathcal{R}(G,\\mathbb{K})$ 对加法、乘法与复共轭封闭. $\\square$\n\n## 1.2 Tannaka 对偶\n\n设 $\\mathcal{R}$ 为 $G$ 在有限维 Hilbert 空间上的酉表示集合. 令 $\\Gamma$ 为所有算子族 $\\gamma$ 的集合，它为每个 $\\pi\\in\\mathcal{R}$ 指定 $\\mathcal{H}_\\pi$ 上的酉算子 $\\gamma(\\pi)$，并与酉等价、直和、张量积、对偶相容；在 $\\Gamma$ 上取最弱拓扑，使 $\\gamma\\mapsto\\langle\\gamma(\\pi)u,v\\rangle$ 连续.\n\n> **定理（Tannaka 对偶定理）**{Tannaka} $\\Gamma$ 是紧群，且 $x\\mapsto\\gamma_x$（其中 $\\gamma_x(\\pi)=\\pi(x)$）是 $G\\to\\Gamma$ 的拓扑群同构.\n\n> **证明** 由 ++定理 1.2++，矩阵系数在 $C(G)$ 中稠密，故 $\\gamma\\mapsto\\gamma(1)$ 的赋值映射既单又满；紧性来自 $\\Gamma$ 是紧算子族的闭子集. $\\square$\n\n**另证** 用 {代表函数} 的有限维性：每个 $\\gamma\\in\\Gamma$ 由它在有限多个不可约表示上的取值决定，于是 $\\Gamma$ 嵌入某个紧的乘积，而 $\\gamma_x$ 的像在其中稠密，故为满. $\\square$\n\n> **评注** Tannaka 的原始叙述只用算子族，没有范畴语言. Grothendieck 之后的版本改从刚性对称张量范畴出发，见 ++#Tannaka++ 的现代表述.\n\n# 2 代数化与复化\n\nKrein 在 1949 年指出，$\\mathcal{R}(G)$ 上的 Hopf 代数结构是联系几何与表示的纽带. 按 {Tannaka} 的框架，紧 Lie 群可以看成实代数群；它的复化在代数几何里就是基变换操作. 三条基本性质如下：\n\n- 表示环 $K_0(\\operatorname{Rep}(G))$ 由不可约表示生成；\n- 复化对应 $\\mathbb{C}\\otimes_{\\mathbb{R}}\\mathfrak{g}$；\n- 纤维函子 $\\omega\\colon\\operatorname{Rep}(G)\\to\\operatorname{Vect}_{\\mathbb{C}}$ 忠实且正合．\n\n:::sign 注意\n本节只陈述结论. 完整证明需要 Peter–Weyl 定理与 Chevalley 定理，不在此展开.\n:::\n\n## 2.1 文献\n\nTannaka 的原文见前注. 现代处理见 [Deligne–Milne](https://example.org/dm \"第 II 节，中性 Tannaka 范畴\")，入门材料见 [[nLab: Tannaka duality]](https://ncatlab.org/nlab/show/Tannaka+duality).\n"
-
-// 对照 PDF 在桌面上（只能由外壳用系统阅读器打开）
-const SAMPLE_PDF = '/Users/dlyly/Desktop/示例-转换对照.pdf'
 
 function sampleNote(t) {
   const el = document.getElementById('sxNote')
@@ -809,11 +826,6 @@ document.getElementById('sxOpenMd').onclick = () => {
     loadDoc(SAMPLE_FULL, '', '示例（副本）')
     say('已载入示例（旧格式副本）：点「应用主题」看它怎么变；这份不写回磁盘')
   })
-}
-document.getElementById('sxOpenPdf').onclick = () => {
-  const b = fsBridge()
-  if (!b) { sampleNote('网页版打不开本地 PDF'); return }
-  b.postMessage({ cmd: 'openExternal', path: SAMPLE_PDF })
 }
 
 document.getElementById('convHint').onclick = openSample
