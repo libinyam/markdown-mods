@@ -789,8 +789,11 @@ function openSample() {
   paint(document.getElementById('sxOldView'), oldTxt)
   paint(document.getElementById('sxNewView'), newTxt)
 }
-// 示例文稿放在桌面（这两份是随这次改动一起生成的）
-const SAMPLE_MD = '/Users/dlyly/Desktop/示例-Tannaka旧稿.md'
+// 完整示例（旧格式原文）直接内嵌：打开时是一份副本，不关联磁盘文件，
+// 所以点「应用主题」不会把桌面那份源文件改掉。
+const SAMPLE_FULL = "# 0 引言\n\n在调和分析中，Pontryagin 对偶建立了局部紧 Abel 群与其特征群的对应关系. 具体而言，设 $G$ 是一个局部紧 Abel 群，其对偶群定义为 $\\widehat{G}=\\operatorname{Hom}_{\\mathrm{cont}}(G,\\mathbb{T})$，其中 $\\mathbb{T}=\\{z\\in\\mathbb{C}\\mid |z|=1\\}$，并赋予紧开拓扑. Pontryagin 对偶定理断言，自然的赋值同态 $\\alpha\\colon G\\to\\widehat{\\widehat{G}}$ 是拓扑群同构.\n\n对于非交换紧群 $G$，一维特征标不足以捕捉群的结构，因为特征标在导群上是平凡的. 重构 $G$ 需要引入其有限维连续表示范畴 $\\operatorname{Rep}(G)$，这就是 Tannaka 对偶的动机. Tannaka 在 1938 年的工作 [Tannaka](https://example.org/tannaka1938) 中预见到，表示范畴的张量结构足以确定原群；当时范畴论尚未建立，他用算子族的语言叙述结论.\n\n# 1 紧 Lie 群的 Tannaka 理论\n\n本节固定一个紧 Lie 群 $G$，参考 [Bröcker–tom Dieck](https://example.org/bd \"第 II 章，代表函数与 Peter–Weyl 定理\").\n\n## 1.1 代表函数\n\n对 $V\\in\\operatorname{Rep}(G)$ 与 $f\\in V^\\vee$、$v\\in V$，令 $d_{f,v}(g)=f(gv)$，并定义线性映射\n\n$$\ns_V\\colon V^\\vee\\otimes_{\\mathbb{K}}V\\to C(G,\\mathbb{K}),\\qquad f\\otimes v\\mapsto d_{f,v}.\n$$\n\n它与左右平移作用相容：$L(g,d_{f,v})=d_{g\\cdot f,v}$，$R(g,d_{f,v})=d_{f,gv}$，因此像 $S(V)=\\mathrm{Im}(s_V)$ 是 $(C(G,\\mathbb{K}),L)$ 的有限维 $G$-不变子空间.\n\n> **定义（代表函数）**{代表函数} 称 $f\\in C(G,\\mathbb{K})$ 为代表函数，若它生成 $(C(G,\\mathbb{K}),L)$ 的一个有限维 $G$-不变子空间. 全体代表函数记作 $\\mathcal{R}(G,\\mathbb{K})$.\n\n> **定理（Peter–Weyl）** 矩阵系数在 $C(G,\\mathbb{K})$ 中稠密；等价地，$\\mathcal{R}(G,\\mathbb{K})$ 在 $C(G,\\mathbb{K})$ 中稠密，且 $\\mathcal{R}(G,\\mathbb{C})$ 在共轭下封闭.\n\n> **命题** $\\mathcal{R}(G,\\mathbb{K})$ 是 $C(G,\\mathbb{K})$ 的 $\\mathbb{K}$-子代数.\n\n> **证明** 设 $f$ 为代表函数，它生成 $(C(G,\\mathbb{K}),R)$ 的有限维子空间 $V$. 取 $V$ 的基 $e_1,\\dots,e_n$ 与对偶基 $e_1^*,\\dots,e_n^*$，写 $R(g,f)=\\sum_{j}a_j(g)e_j$，则由 $s_V$ 的定义 $a_j(g)=s_V(e_j^*,f)(g)$. 于是对每个 $g\\in G$ 有\n>\n> $$\n> f(g)=R(g,f)(1)=\\sum_{j=1}^{n}s_V(e_j^*,f)(g)\\,e_j(1),\n> $$\n>\n> 故 $f\\in S(V)$. 而 $S(V)$ 有限维且 $L$-不变，所以 $f$ 生成的 $L$-不变子空间也有限维，第一个断言成立. 至于第二个断言，只需考虑矩阵系数：直和、张量积与对偶表示说明 $\\mathcal{R}(G,\\mathbb{K})$ 对加法、乘法与复共轭封闭. $\\square$\n\n## 1.2 Tannaka 对偶\n\n设 $\\mathcal{R}$ 为 $G$ 在有限维 Hilbert 空间上的酉表示集合. 令 $\\Gamma$ 为所有算子族 $\\gamma$ 的集合，它为每个 $\\pi\\in\\mathcal{R}$ 指定 $\\mathcal{H}_\\pi$ 上的酉算子 $\\gamma(\\pi)$，并与酉等价、直和、张量积、对偶相容；在 $\\Gamma$ 上取最弱拓扑，使 $\\gamma\\mapsto\\langle\\gamma(\\pi)u,v\\rangle$ 连续.\n\n> **定理（Tannaka 对偶定理）**{Tannaka} $\\Gamma$ 是紧群，且 $x\\mapsto\\gamma_x$（其中 $\\gamma_x(\\pi)=\\pi(x)$）是 $G\\to\\Gamma$ 的拓扑群同构.\n\n> **证明** 由 ++定理 1.2++，矩阵系数在 $C(G)$ 中稠密，故 $\\gamma\\mapsto\\gamma(1)$ 的赋值映射既单又满；紧性来自 $\\Gamma$ 是紧算子族的闭子集. $\\square$\n\n**另证** 用 {代表函数} 的有限维性：每个 $\\gamma\\in\\Gamma$ 由它在有限多个不可约表示上的取值决定，于是 $\\Gamma$ 嵌入某个紧的乘积，而 $\\gamma_x$ 的像在其中稠密，故为满. $\\square$\n\n> **评注** Tannaka 的原始叙述只用算子族，没有范畴语言. Grothendieck 之后的版本改从刚性对称张量范畴出发，见 ++#Tannaka++ 的现代表述.\n\n# 2 代数化与复化\n\nKrein 在 1949 年指出，$\\mathcal{R}(G)$ 上的 Hopf 代数结构是联系几何与表示的纽带. 按 {Tannaka} 的框架，紧 Lie 群可以看成实代数群；它的复化在代数几何里就是基变换操作. 三条基本性质如下：\n\n- 表示环 $K_0(\\operatorname{Rep}(G))$ 由不可约表示生成；\n- 复化对应 $\\mathbb{C}\\otimes_{\\mathbb{R}}\\mathfrak{g}$；\n- 纤维函子 $\\omega\\colon\\operatorname{Rep}(G)\\to\\operatorname{Vect}_{\\mathbb{C}}$ 忠实且正合．\n\n:::sign 注意\n本节只陈述结论. 完整证明需要 Peter–Weyl 定理与 Chevalley 定理，不在此展开.\n:::\n\n## 2.1 文献\n\nTannaka 的原文见前注. 现代处理见 [Deligne–Milne](https://example.org/dm \"第 II 节，中性 Tannaka 范畴\")，入门材料见 [[nLab: Tannaka duality]](https://ncatlab.org/nlab/show/Tannaka+duality).\n"
+
+// 对照 PDF 在桌面上（只能由外壳用系统阅读器打开）
 const SAMPLE_PDF = '/Users/dlyly/Desktop/示例-转换对照.pdf'
 
 function sampleNote(t) {
@@ -801,11 +804,10 @@ function sampleNote(t) {
 }
 
 document.getElementById('sxOpenMd').onclick = () => {
-  const b = fsBridge()
-  if (!b) { sampleNote('网页版读不到本地文件，请手动「打开」'); return }
   guardUnsaved(() => {
     document.getElementById('samplePanel').classList.remove('on')
-    b.postMessage({ cmd: 'openPath', path: SAMPLE_MD })
+    loadDoc(SAMPLE_FULL, '', '示例（副本）')
+    say('已载入示例（旧格式副本）：点「应用主题」看它怎么变；这份不写回磁盘')
   })
 }
 document.getElementById('sxOpenPdf').onclick = () => {
