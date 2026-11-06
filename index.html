@@ -108,7 +108,11 @@ main { flex: 1; display: flex; min-height: 0; }
   background: #fbfbfc; border: 1px solid #e4e6ec; border-radius: 8px;
 }
 .sx .box > div { width: 375px; margin: 0 auto; zoom: .84; background: #fff; padding: 10px 12px; }
-.sxtip { margin-top: 14px; font-size: 12px; color: #6b6d78; line-height: 1.8; }
+.sxtip { margin-top: 12px; font-size: 12px; color: #6b6d78; line-height: 1.8; }
+.sxrow { display: flex; gap: 8px; align-items: center; margin: -4px 0 4px; }
+.sxrow button { padding: 6px 13px; border: 1px solid #ccc; border-radius: 6px; background: #fff; font-size: 13px; cursor: pointer; }
+.sxrow button:hover { border-color: #2f6b3b; color: #2f6b3b; }
+.sxnote { font-size: 12px; color: #8a8c96; }
 .overlay h2 { margin: 0 0 4px; font-size: 17px; }
 .overlay .ver { color: #7a7c86; font-size: 12px; margin-bottom: 14px; }
 .overlay h3 { margin: 20px 0 8px; font-size: 14px; color: #2f6b3b; }
@@ -605,6 +609,13 @@ img {
     <h2>旧稿 → 本编辑器的写法</h2>
     <div class="ver">点一次「应用主题」，左边就变成右边；卡片、编号、引用、脚注都会跟着重排.</div>
 
+    <div class="sxrow">
+      <button id="sxOpenMd">在编辑器里打开这份示例</button>
+      <button id="sxOpenPdf">看排版后的 PDF</button>
+      <span id="sxNote" class="sxnote"></span>
+    </div>
+
+
     <div class="sx">
       <div class="col">
         <div class="tag">转换前 · 源码</div>
@@ -778,6 +789,31 @@ function openSample() {
   paint(document.getElementById('sxOldView'), oldTxt)
   paint(document.getElementById('sxNewView'), newTxt)
 }
+// 示例文稿放在桌面（这两份是随这次改动一起生成的）
+const SAMPLE_MD = '/Users/dlyly/Desktop/示例-Tannaka旧稿.md'
+const SAMPLE_PDF = '/Users/dlyly/Desktop/示例-Tannaka旧稿.pdf'
+
+function sampleNote(t) {
+  const el = document.getElementById('sxNote')
+  el.textContent = t
+  clearTimeout(el._t)
+  el._t = setTimeout(() => { el.textContent = '' }, 3000)
+}
+
+document.getElementById('sxOpenMd').onclick = () => {
+  const b = fsBridge()
+  if (!b) { sampleNote('网页版读不到本地文件，请手动「打开」'); return }
+  guardUnsaved(() => {
+    document.getElementById('samplePanel').classList.remove('on')
+    b.postMessage({ cmd: 'openPath', path: SAMPLE_MD })
+  })
+}
+document.getElementById('sxOpenPdf').onclick = () => {
+  const b = fsBridge()
+  if (!b) { sampleNote('网页版打不开本地 PDF'); return }
+  b.postMessage({ cmd: 'openExternal', path: SAMPLE_PDF })
+}
+
 document.getElementById('convHint').onclick = openSample
 document.getElementById('closeSample').onclick = () => document.getElementById('samplePanel').classList.remove('on')
 
