@@ -125,11 +125,11 @@ main { flex: 1; display: flex; min-height: 0; }
   font: 11.5px/1.6 ui-monospace, Menlo, Consolas, monospace; color: #33363d; white-space: pre-wrap;
 }
 .sxr .box {
-  max-height: 210px; overflow: auto; padding: 8px 4px 12px;
+  max-height: 340px; overflow: auto; padding: 8px 4px 12px;
   background: #fbfbfc; border: 1px solid #e4e6ec; border-radius: 8px;
 }
 .sxr .pair { align-items: start; }
-.sxr .box > div { width: 375px; margin: 0 auto; zoom: .8; background: #fff; padding: 8px 10px; }
+.sxr .box > div { width: 375px; margin: 0 auto; background: #fff; padding: 8px 10px; }
 .sxrow { display: flex; gap: 8px; align-items: center; margin: -4px 0 4px; }
 .sxrow button { padding: 6px 13px; border: 1px solid #ccc; border-radius: 6px; background: #fff; font-size: 13px; cursor: pointer; }
 .sxrow button:hover { border-color: #2f6b3b; color: #2f6b3b; }
@@ -777,7 +777,7 @@ document.getElementById('closeUp').onclick = () => document.getElementById('upPa
 
 // 示例：同一段旧稿，转换前 / 转换后各渲染一遍（用同一套 paint，颜色和编号都是真的）
 // 示例：逐条列出转换规则，每条左边是原写法、右边是转换后的写法，两边都是真实渲染
-const SAMPLE_RULES = [["卡片：加粗标题", "引用块里的加粗标题会被认成卡片；花括号里的名字当引用名，不显示。", "> **定理（Chevally）**{Chevally子商} 设 $G$ 是有限群."], ["卡片：证明类", "证明、另证、别证、反证、证，都收成证明卡；它们不占编号。", "> **证明** 由引理立得. $\\square$\n\n**另证** 换一个角度. $\\square$"], ["卡片：其余类型", "定义、引理、命题、推论、评注、例、注、问题、公理、事实，各归各类。", "> **定义（单子）** 三元组 $(T,\\eta,\\mu)$.\n\n> **引理** 略.\n\n> **评注** 这只是评注."], ["卡片：名字写在前面", "标题里只要含类型词就认；名字在前的按原样保留，不拆。", "> **Artin $L$ 猜想** 若 $\\rho$ 非平凡，则 $L(\\rho,s)$ 全纯."], ["编号：手写节号优先", "标题开头的数字直接当节号，卡片编号跟着走；手写的旧编号会被重算。", "# 3 表示论输入\n\n> **定理 2.2** 设 $G$ 是有限群.\n\n> **引理 2.3** 略."], ["引用：花括号名字", "正文里写 {名字}，转换成 ++#名字++，渲染成当前编号。", "> **定理（Chevally）**{Chevally子商} 设 $G$ 是有限群.\n\n由 {Chevally子商} 立得."], ["引用：旧编号", "正文手写的「定理 1.1」会先按旧号换新号，再核对卡片类型。", "> **定理（Peter–Weyl）** 矩阵系数在 $C(G)$ 中稠密.\n\n> **定理（Tannaka）** 由 ++定理 1.1++ 立得."], ["标题：章与节", "「第 2 章 …」升为一级标题，「2.1 …」升为二级标题。", "第 2 章 表示论\n\n2.1 基本定义\n\n正文字."], ["列表：分号条目", "连续几段都以「；」收尾时，合成一个无序列表。", "表示环由不可约表示生成；\n\n复化对应 $\\mathbb{C}\\otimes\\mathfrak{g}$；\n\n纤维函子忠实且正合."], ["引用：段中补链", "正文中间的「定理 1.1」会包成引用；段首的那个不动。", "> **定理（Tannaka）** 略.\n\n由定理 1.1 立得，定理 1.1 的证明见下."]]
+const SAMPLE_RULES = [["卡片：加粗标题", "引用块里的加粗标题会被认成卡片；花括号里的名字当引用名，不显示。", "# 1 演示\n\n> **定理（Chevally）**{Chevally子商} 设 $G$ 是有限群."], ["卡片：证明类", "证明、另证、别证、反证、证，都收成证明卡；它们不占编号。", "# 1 演示\n\n> **证明** 由引理立得. $\\square$\n\n**另证** 换一个角度. $\\square$"], ["卡片：其余类型", "定义、引理、命题、推论、评注、例、注、问题、公理、事实，各归各类。", "# 1 演示\n\n> **定义（单子）** 三元组 $(T,\\eta,\\mu)$.\n\n> **引理** 略.\n\n> **评注** 这只是评注."], ["卡片：名字写在前面", "标题里只要含类型词就认；名字在前的按原样保留，不拆。", "# 1 演示\n\n> **Artin $L$ 猜想** 若 $\\rho$ 非平凡，则 $L(\\rho,s)$ 全纯."], ["编号：手写节号优先", "标题开头的数字直接当节号，卡片编号跟着走；手写的旧编号会被重算。", "# 3 表示论输入\n\n> **定理 2.2** 设 $G$ 是有限群.\n\n> **引理 2.3** 略."], ["引用：花括号名字", "正文里写 {名字}，转换成 ++#名字++，渲染成当前编号。", "# 1 演示\n\n> **定理（Chevally）**{Chevally子商} 设 $G$ 是有限群.\n\n由 {Chevally子商} 立得."], ["引用：旧编号", "正文手写的「定理 1.1」会先按旧号换新号，再核对卡片类型。", "# 1 演示\n\n> **定理（Peter–Weyl）** 矩阵系数在 $C(G)$ 中稠密.\n\n> **定理（Tannaka）** 由 ++定理 1.1++ 立得."], ["标题：章与节", "「第 2 章 …」升为一级标题，「2.1 …」升为二级标题。", "第 2 章 表示论\n\n2.1 基本定义\n\n正文字."], ["列表：分号条目", "连续几段都以「；」收尾时，合成一个无序列表。", "表示环由不可约表示生成；\n\n复化对应 $\\mathbb{C}\\otimes\\mathfrak{g}$；\n\n纤维函子忠实且正合."], ["引用：段中补链", "正文中间的「定理 1.1」会包成引用；段首的那个不动。", "# 1 演示\n\n> **定理（Tannaka）** 略.\n\n由定理 1.1 立得，定理 1.1 的证明见下."]]
 let sampleReady = false
 function buildSamples() {
   const list = document.getElementById('sxList')
