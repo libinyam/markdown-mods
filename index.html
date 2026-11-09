@@ -36,6 +36,8 @@ body { display: flex; flex-direction: column; font: 14px system-ui, sans-serif; 
 #msg { font-size: 12px; color: #666; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #wc { font-size: 12px; color: #8a8d99; font-variant-numeric: tabular-nums; white-space: nowrap; }
 #wc b { font-weight: 600; color: #55575f; }
+/* 底部状态条：只放字数，不抢工具栏的位置 */
+#status { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 14px; padding: 4px 14px; background: #fff; border-top: 1px solid #ddd; }
 #bar button, #bar label { padding: 6px 14px; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; }
 #bar button:hover, #bar label:hover { border-color: #2f6b3b; color: #2f6b3b; }
 #bar button:disabled { opacity: .4; cursor: default; border-color: #ddd; color: #999; }
@@ -456,7 +458,6 @@ img {
       <button id="saveAs" title="存成一个新文件，并关联到它（⌘⇧S）">另存为</button>
     </div>
     <div class="grp right">
-      <span id="wc" title="正文字数与字符数"></span>
       <span id="msg"></span>
       <span id="file" title="当前关联的本地文件"></span>
     </div>
@@ -466,6 +467,7 @@ img {
   <textarea id="src" spellcheck="false"></textarea>
   <div id="pane"><div id="view"></div></div>
 </main>
+<div id="status"><span id="wc" title="正文字数与字符数"></span></div>
 
 <div id="find">
   <input id="findQ" type="text" placeholder="查找" autocomplete="off" spellcheck="false">
