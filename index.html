@@ -33,7 +33,7 @@ body { display: flex; flex-direction: column; font: 14px system-ui, sans-serif; 
 #bar .plat svg, #bar .plat img { width: 17px; height: 17px; display: block; flex: none; }
 #file { font-size: 12px; color: #888; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #file.dirty::before { content: '● '; color: #d18b00; }
-#msg { font-size: 12px; color: #666; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#msg { font-size: 12px; color: #666; width: 104px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #autoBox { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #666; cursor: pointer; user-select: none; white-space: nowrap; }
 #autoBox input { margin: 0; width: 13px; height: 13px; accent-color: #2f6b3b; cursor: pointer; }
 #wc { font-size: 12px; color: #8a8d99; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -1426,7 +1426,8 @@ function tex2text(tex) {
 function say(text) {
   const msg = document.getElementById('msg')
   msg.textContent = text
-  setTimeout(() => msg.textContent === text && (msg.textContent = ''), 3000)
+  msg.title = text || ''
+  setTimeout(() => { if (msg.textContent === text) { msg.textContent = ''; msg.title = '' } }, 3000)
 }
 
 function copy(html, label, note) {
@@ -1930,13 +1931,16 @@ window.__fsSaved = info => {
   savedText = src.value
   rememberFile(curPath, curName)
   markDirty(false); setFileLabel()
-  say('已保存 ' + info.name + '  ' + new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }))
+  const wasAuto = autoSaving
+  autoSaving = false
+  // 自动保存是常态，不弹提示（橙点消失本身就是反馈）；手动保存才说一句
+  if (!wasAuto) say('已保存 ' + new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }))
   if (pendingAfterSave) { const a = pendingAfterSave; pendingAfterSave = null; a() }
 }
 
 // 有关联文件时，停手 1.2 秒自动写盘，防闪退丢稿。
 // 工具栏右侧有个勾选框可以关掉它（默认开着，选择记在浏览器里）
-let autoSaveTimer = null
+let autoSaveTimer = null, autoSaving = false
 let autoSaveOn = true
 try { autoSaveOn = localStorage.getItem('autosave') !== '0' } catch (e) {}
 // 勾选框跟状态对齐（默认开）
@@ -1963,7 +1967,7 @@ function scheduleAutoSave() {
   clearTimeout(autoSaveTimer)
   autoSaveTimer = setTimeout(() => {
     const b = fsBridge()
-    if (b && src.value !== savedText) b.postMessage({ cmd: 'save', text: src.value })
+    if (b && src.value !== savedText) { autoSaving = true; b.postMessage({ cmd: 'save', text: src.value }) }
   }, 1200)
 }
 
