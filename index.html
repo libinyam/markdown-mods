@@ -590,7 +590,7 @@ img {
     <h3>查找与定位</h3>
     <ul>
       <li><b>⌘F / Ctrl+F</b> 打开查找条，搜的是左边源码。Enter 下一个、Shift+Enter 上一个、Esc 关闭；光标有选区时会自动填进搜索框。</li>
-      <li><b>在右边划选一段</b>，左边会跟着选中同一段源码；划选过程中不动，松手那一刻才同步.</li>
+      <li><b>在右边划选一段</b>，左边会跟着选中同一段源码；划选过程中不动，松手那一刻才同步. 同一句话在稿子里出现多次时，按它在全文里的第几处对位（前后文也一起比），不会一律跳到第一处；跨段落划选就选到对应的整段.</li>
       <li><b>双击右边预览里的文字</b>，左边精确选中那个词；双击公式、图标这类选不中文字的地方，就选中它所在的那一段（连公式一起选中）。</li>
       <li>同步时左边会抢焦点，右边的选区高亮随之消失——这是浏览器行为，左边不聚焦就画不出选区，两者只能要一个.</li>
     </ul>
@@ -2089,7 +2089,11 @@ document.addEventListener('keydown', e => {
 
 // ── 双击预览 → 左边跳到并选中对应的源码 ──
 // 把源码里的 $…$ / $$…$$ 抠掉，得到和渲染文本对得上的字符串，并记下每个字符在源码里的位置
+// flatten() 的结果按源码缓存：划选时会被反复调用，不必每次把整篇重扫一遍
+let flatCache = { v: null, out: '', map: [] }
+
 function flatten() {
+  if (flatCache.v === src.value) return flatCache
   const S = src.value
   let out = ''
   const map = []
@@ -2110,26 +2114,92 @@ function flatten() {
     map.push(i)
     i++
   }
-  return { out, map }
+  flatCache = { v: S, out, map }
+  return flatCache
+}
+
+const collapse = s => String(s || '').replace(/\s+/g, ' ').trim()
+
+// 选区落在哪个块里（段落、列表项、标题、整张卡片）
+function blockOf(node) {
+  const el = node && (node.nodeType === 1 ? node : node.parentElement)
+  return (el && el.closest && el.closest('p, li, td, th, h1, h2, h3, section.markdown-alert')) || null
+}
+
+// 块内「块首 → 选区起点」或「选区终点 → 块尾」的文字，用作匹配的上下文.
+// 同一段话在稿子里出现多次时，只有上下文也对得上的那一处才是用户选的那处
+function ctxText(block, node, offset, side) {
+  if (!block || !node) return ''
+  try {
+    const r = document.createRange()
+    r.selectNodeContents(block)
+    if (side === 'before') r.setEnd(node, offset)
+    else r.setStart(node, offset)
+    return r.toString()
+  } catch (e) { return '' }
 }
 
 // 渲染出来的那段文字 → 源码里的 [start, end)。公式在渲染文本里是空的，
-// 所以拿 flatten() 的「去公式源码」去配，再用 map 换回真实下标
-function srcRangeFor(text, blockText) {
-  const t = String(text || '').replace(/\s+/g, ' ').trim()
+// 所以拿 flatten() 的「去公式源码」去配，再用 map 换回真实下标.
+// 匹配从严到宽：整段带前后文 → 只带后文 → 只带前文 → 光秃秃的整段；
+// 都不中再退一步只认开头 40 个字（跨块、块间夹着 ::: 时用得上）
+function srcRangeFor(text, before, after, occ) {
+  const t = collapse(text)
   if (!t) return null
   const { out, map } = flatten()
+  // 同一段话出现多次时，先按「第几处」定位：渲染顺序和源码顺序一致，
+  // 前后文也可能一模一样（比如定理和它的证明里各有一句），只有序号不会骗人
   const cand = []
-  let i = out.indexOf(t)
-  while (i >= 0 && cand.length < 200) { cand.push(i); i = out.indexOf(t, i + 1) }
+  let q = out.indexOf(t)
+  while (q >= 0 && cand.length < 500) { cand.push(q); q = out.indexOf(t, q + Math.max(1, t.length)) }
   if (!cand.length) return null
-  let p = cand[0]
-  if (cand.length > 1 && blockText) {
-    const anchor = out.indexOf(String(blockText).replace(/\s+/g, ' ').trim().slice(0, 12))
-    if (anchor >= 0) p = cand.reduce((a, b) => Math.abs(b - anchor) < Math.abs(a - anchor) ? b : a, cand[0])
+  let at = -1, len = t.length
+  const nth = occ && occ.total === cand.length ? occ.before : -1
+  if (cand.length > 1 && nth >= 0 && nth < cand.length) {
+    at = cand[nth]
+  } else if (cand.length > 1) {
+    // 序号对不上（比如标题里的字在源码里还多出现一次），退回用前后文挑最近的一处
+    const B = collapse(before).slice(-40)
+    const A = collapse(after).slice(0, 40)
+    const probes = []
+    if (B && A) probes.push([B + t + A, B.length, t.length])
+    if (A) probes.push([t + A, 0, t.length])
+    if (B) probes.push([B + t, B.length, t.length])
+    for (const [probe, skip, n] of probes) {
+      if (!probe) continue
+      const i = out.indexOf(probe)
+      if (i >= 0) { at = i + skip; len = n; break }
+    }
+    if (at < 0) at = cand[0]
+  } else {
+    at = cand[0]
   }
-  if (map[p] == null) return null
-  return { start: map[p], end: (map[p + t.length - 1] ?? map[p]) + 1 }
+  if (at < 0 || map[at] == null) return null
+  return { start: map[at], end: (map[at + len - 1] ?? map[at]) + 1 }
+}
+
+// 这段字在渲染正文里一共出现几次（total），选区之前出现过几次（before）。
+// 两个数都拿到，才能判断「第几处」这条线索靠不靠得住：
+// 源码里可能多几处（卡片标题、{引用名} 之类只存在于源码里），数目对不上就不用它
+function occurrenceInfo(t) {
+  const count = s => {
+    let n = 0, i = s.indexOf(t)
+    while (i >= 0) { n++; i = s.indexOf(t, i + Math.max(1, t.length)) }
+    return n
+  }
+  const total = count(collapse(view.textContent))
+  let before = 0
+  try {
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount) {
+      const r = sel.getRangeAt(0)
+      const pre = document.createRange()
+      pre.selectNodeContents(view)
+      pre.setEnd(r.startContainer, r.startOffset)
+      before = count(collapse(pre.toString()))
+    }
+  } catch (e) {}
+  return { before, total }
 }
 
 // 在预览里选中一段（不是双击）→ 左边跟着选中同一段。
@@ -2140,11 +2210,13 @@ function syncFromView() {
   const sel = window.getSelection()
   if (!sel || sel.isCollapsed || !sel.rangeCount) return
   const r = sel.getRangeAt(0)
-  if (!view.contains(r.startContainer)) return
-  const node = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement
-  const block = node && node.closest('p, li, td, th, h1, h2, h3, section.markdown-alert')
+  if (!view.contains(r.startContainer) || !view.contains(r.endContainer)) return
+  // 起点、终点各取一块上下文：跨块划选时两头都有依据，不会落到别处去了
+  const sb = blockOf(r.startContainer), eb = blockOf(r.endContainer) || sb
+  const before = ctxText(sb, r.startContainer, r.startOffset, 'before')
+  const after = ctxText(eb, r.endContainer, r.endOffset, 'after')
   const picked = sel.toString()
-  const hit = srcRangeFor(picked, block ? block.textContent : '')
+  const hit = srcRangeFor(picked, before, after, occurrenceInfo(collapse(picked)))
   if (!hit) return
   lastSelText = picked.trim()   // 抢焦点会把右边的选区清掉，留一份给双击那条路用
   // 注意：给 textarea 上焦点会清掉右边的选区高亮，这是浏览器的行为，没法两全；
