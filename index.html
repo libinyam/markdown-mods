@@ -590,7 +590,7 @@ img {
     <h3>查找与定位</h3>
     <ul>
       <li><b>⌘F / Ctrl+F</b> 打开查找条，搜的是左边源码。Enter 下一个、Shift+Enter 上一个、Esc 关闭；光标有选区时会自动填进搜索框。</li>
-      <li><b>在右边划选一段</b>，左边会跟着选中同一段源码；划选过程中不动，松手那一刻才同步. 同一句话在稿子里出现多次时，按它在全文里的第几处对位（前后文也一起比），不会一律跳到第一处；跨段落划选就选到对应的整段.</li>
+      <li><b>在右边划选一段</b>，左边会跟着选中同一段源码；划选过程中不动，松手那一刻才同步. 左边会滚到那一行，并把它摆在与右栏选中处相同的高度（齐平），一眼就能对上看的是哪句. 同一句话出现多次时，按它在全文里的第几处对位（前后文也一起比），不会一律跳到第一处；跨段落划选就选到对应的整段.</li>
       <li><b>双击右边预览里的文字</b>，左边精确选中那个词；双击公式、图标这类选不中文字的地方，就选中它所在的那一段（连公式一起选中）。</li>
       <li>同步时左边会抢焦点，右边的选区高亮随之消失——这是浏览器行为，左边不聚焦就画不出选区，两者只能要一个.</li>
     </ul>
@@ -2016,10 +2016,55 @@ const findN = document.getElementById('findN')
 let findHits = [], findAt = -1
 
 // textarea 没有 scrollIntoView，按「到这一步为止有几个换行」估位置
-function scrollSrcTo(pos) {
-  const line = src.value.slice(0, pos).split('\n').length - 1
-  const lh = parseFloat(getComputedStyle(src).lineHeight) || 24
-  src.scrollTop = Math.max(0, line * lh - src.clientHeight / 2 + lh)
+// 影子 div：按 textarea 的真实宽度和字体把文字排一遍，量出第 pos 个字在第几行。
+// 光数换行是不行的——长段落会折行，行号乘行高能差出好几屏
+let shadowEl = null
+function caretTop(pos) {
+  const cs = getComputedStyle(src)
+  if (!shadowEl) {
+    shadowEl = document.createElement('div')
+    shadowEl.setAttribute('aria-hidden', 'true')
+    document.body.appendChild(shadowEl)
+  }
+  const st = shadowEl.style
+  st.position = 'absolute'
+  st.left = '-99999px'
+  st.top = '0'
+  st.visibility = 'hidden'
+  st.pointerEvents = 'none'
+  st.boxSizing = 'content-box'
+  st.overflow = 'hidden'
+  st.whiteSpace = 'pre-wrap'
+  st.wordWrap = 'break-word'
+  st.overflowWrap = 'break-word'
+  for (const k of ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'fontVariant',
+    'letterSpacing', 'wordSpacing', 'lineHeight', 'textIndent', 'tabSize', 'textTransform']) st[k] = cs[k]
+  const padL = parseFloat(cs.paddingLeft) || 0, padR = parseFloat(cs.paddingRight) || 0
+  st.padding = cs.paddingTop + ' ' + padR + 'px ' + cs.paddingBottom + ' ' + padL + 'px'
+  st.width = Math.max(20, src.clientWidth - padL - padR) + 'px'
+  shadowEl.textContent = src.value.slice(0, pos)
+  const mark = document.createElement('span')
+  mark.textContent = '\u200b'
+  shadowEl.appendChild(mark)
+  const top = mark.offsetTop
+  return isFinite(top) ? top : null
+}
+
+// 把源码滚到第 pos 个字的位置。atY 给了就让它落在屏幕上的那个高度（和右栏选中的位置齐平），
+// 没给就放在中间偏高一点
+function scrollSrcTo(pos, atY) {
+  const box = src.getBoundingClientRect()
+  const h = src.clientHeight || 300
+  let dy = atY == null ? h * 0.42 : atY - box.top
+  dy = Math.max(36, Math.min(h - 36, dy))
+  let top = null
+  try { top = caretTop(pos) } catch (e) { top = null }
+  if (top == null) {
+    const line = src.value.slice(0, pos).split('\n').length - 1
+    const lh = parseFloat(getComputedStyle(src).lineHeight) || 24
+    top = line * lh
+  }
+  src.scrollTop = Math.max(0, top - dy)
 }
 
 function paintFind() {
@@ -2089,7 +2134,10 @@ document.addEventListener('keydown', e => {
 
 // ── 双击预览 → 左边跳到并选中对应的源码 ──
 // 把源码里的 $…$ / $$…$$ 抠掉，得到和渲染文本对得上的字符串，并记下每个字符在源码里的位置
-// flatten() 的结果按源码缓存：划选时会被反复调用，不必每次把整篇重扫一遍
+// flatten()：把源码「像渲染那样」摊平成纯文字，并记下每个字在源码里的下标。
+// 除了公式，Markdown 记号（#、**、++、>、列表符、链接方括号、卡片那行 :::）也一并丢掉，
+// 否则「正文里的一段字」在源码里根本搜不到——粗体、行内链接一夹就断。
+// 结果按 src.value 缓存：划选时会反复调用
 let flatCache = { v: null, out: '', map: [] }
 
 function flatten() {
@@ -2097,21 +2145,50 @@ function flatten() {
   const S = src.value
   let out = ''
   const map = []
-  let i = 0
+  const put = (ch, i) => { out += ch; map.push(i) }
+  const gap = i => { if (out && !/ $/.test(out)) put(' ', i) }   // 空白压成一个空格
+  const skipLine = i => { const e = S.indexOf('\n', i); return e < 0 ? S.length : e }
+
+  let i = 0, lineHead = true
   while (i < S.length) {
-    if (S[i] === '$') {
-      const dbl = S[i + 1] === '$'
-      const end = dbl ? S.indexOf('$$', i + 2) : S.indexOf('$', i + 1)
-      if (end > i) { i = end + (dbl ? 2 : 1); continue }
-    }
-    // 连续空白压成一个空格（和渲染出来的 textContent 对齐），记得同步跳过 map
-    if (/\s/.test(S[i])) {
-      if (!/\s$/.test(out)) { out += ' '; map.push(i) }
-      i++
+    const c = S[i]
+    if (lineHead) {
+      if (c === '\n') { gap(i); i++; continue }
+      let m
+      if ((m = /^[ \t]+/.exec(S.slice(i, i + 8)))) { i += m[0].length; continue }
+      if (S.startsWith(':::', i)) { i = skipLine(i); continue }                 // 卡片那一行不显示
+      const line = S.slice(i, skipLine(i) + 1).trim()
+      if (/^([-*_])\1{2,}$/.test(line) || (/\|/.test(line) && /^[\s:|-]+$/.test(line))) { i = skipLine(i); continue }
+      if ((m = /^#{1,6}[ \t]+/.exec(S.slice(i, i + 8)))) { i += m[0].length; lineHead = false; continue }
+      if ((m = /^>[ \t]?/.exec(S.slice(i, i + 4)))) { i += m[0].length; lineHead = false; continue }
+      if ((m = /^(?:[-*+]|\d+[.)])[ \t]+/.exec(S.slice(i, i + 8)))) { i += m[0].length; lineHead = false; continue }
+      lineHead = false
       continue
     }
-    out += S[i]
-    map.push(i)
+    if (c === '\n') { gap(i); lineHead = true; i++; continue }
+    if (/\s/.test(c)) { gap(i); i++; continue }
+    if (c === '$') {                                    // 公式整段不要
+      const dbl = S[i + 1] === '$'
+      const end = dbl ? S.indexOf('$$', i + 2) : S.indexOf('$', i + 1)
+      i = end > i ? end + (dbl ? 2 : 1) : i + 1
+      continue
+    }
+    if (c === '\\') { i++; if (i < S.length) { put(S[i], i); i++ } continue }
+    if (c === '`') { i++; continue }
+    if ((c === '~' || c === '+' || c === '*' || c === '_') && S[i + 1] === c) { i += 2; continue }
+    if (c === '*') { i++; continue }
+    if (c === '!' && S[i + 1] === '[') {                // 图片整个跳过
+      const rb = S.indexOf('](', i), rp = rb > 0 ? S.indexOf(')', rb) : -1
+      i = rp > 0 ? rp + 1 : i + 2
+      continue
+    }
+    if (c === '[') { i++; continue }                     // 链接：留文字，去掉方括号和地址
+    if (c === ']') {
+      if (S[i + 1] === '(') { const rp = S.indexOf(')', i); if (rp > 0) { i = rp + 1; continue } }
+      i++; continue
+    }
+    if (c === '|') { i++; continue }
+    put(c, i)
     i++
   }
   flatCache = { v: S, out, map }
@@ -2175,7 +2252,17 @@ function srcRangeFor(text, before, after, occ) {
     at = cand[0]
   }
   if (at < 0 || map[at] == null) return null
-  return { start: map[at], end: (map[at + len - 1] ?? map[at]) + 1 }
+  // 整段没搜全（跨卡片、中间夹着只在渲染里出现的标题）时，终点单独用末尾 40 字定位，
+  // 免得只选中开头 40 个字
+  let endAt = at + len
+  if (len < t.length && t.length > 80) {
+    const tail = t.slice(-40)
+    for (const probe of (A ? [tail + A, tail] : [tail])) {
+      const j = out.indexOf(probe, at + 1)
+      if (j > at) { endAt = j + tail.length; break }
+    }
+  }
+  return { start: map[at], end: (map[endAt - 1] ?? map[at]) + 1 }
 }
 
 // 这段字在渲染正文里一共出现几次（total），选区之前出现过几次（before）。
@@ -2218,13 +2305,16 @@ function syncFromView() {
   const picked = sel.toString()
   const hit = srcRangeFor(picked, before, after, occurrenceInfo(collapse(picked)))
   if (!hit) return
+  // 右栏选区在屏幕上的位置：左栏滚过去以后要和它齐平
+  let targetY = null
+  try { targetY = r.getBoundingClientRect().top } catch (e) {}
   lastSelText = picked.trim()   // 抢焦点会把右边的选区清掉，留一份给双击那条路用
   // 注意：给 textarea 上焦点会清掉右边的选区高亮，这是浏览器的行为，没法两全；
   // 所以只在拖选结束（mouseup）时才抢焦点，拖的过程中不动
   syncing = true
   src.focus()
   src.setSelectionRange(hit.start, hit.end)
-  scrollSrcTo(hit.start)
+  scrollSrcTo(hit.start, targetY)
   setTimeout(() => { syncing = false }, 0)
 }
 
@@ -2279,7 +2369,7 @@ view.addEventListener('dblclick', e => {
   if (start < 0) return
   src.focus()
   src.setSelectionRange(start, start + len)
-  scrollSrcTo(start)
+  scrollSrcTo(start, e.clientY)
 })
 
 // ── 快捷键：加粗、斜体、下划线、删除线、代码、链接、公式、标题 ──
