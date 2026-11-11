@@ -766,7 +766,7 @@ function svg(tex, display) {
 const rules = [...document.getElementById('theme').sheet.cssRules]
 const src = document.getElementById('src'), view = document.getElementById('view')
 
-const APP_VERSION = '2026-11-09';
+const APP_VERSION = '2026-11-11';
 const APP_REPO = 'libinyam/markdown-mods';
 const REPO_URL = 'https://github.com/' + APP_REPO;
 
@@ -1996,8 +1996,17 @@ function paintFind() {
   if (!findHits.length) { findN.textContent = findQ.value ? '无' : ''; return }
   findN.textContent = (findAt + 1) + '/' + findHits.length
   const p = findHits[findAt]
+  // WKWebView 里给 textarea 调 setSelectionRange 会顺带把焦点抢过去，
+  // 于是每敲一个字光标就掉进左边、查找框没法接着输入。
+  // 记下「刚才在查找框里」和输入框的选区，选完再还回去。
+  const inFind = document.activeElement === findQ
+  const cs = findQ.selectionStart, ce = findQ.selectionEnd
   src.setSelectionRange(p, p + findQ.value.length)
   scrollSrcTo(p)
+  if (inFind) {
+    findQ.focus({ preventScroll: true })
+    try { findQ.setSelectionRange(cs, ce) } catch (e) {}
+  }
 }
 
 function runFind(reset) {
