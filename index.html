@@ -34,6 +34,8 @@ body { display: flex; flex-direction: column; font: 14px system-ui, sans-serif; 
 #file { font-size: 12px; color: #888; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #file.dirty::before { content: '● '; color: #d18b00; }
 #msg { font-size: 12px; color: #666; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#autoBox { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #666; cursor: pointer; user-select: none; white-space: nowrap; }
+#autoBox input { margin: 0; width: 13px; height: 13px; accent-color: #2f6b3b; cursor: pointer; }
 #wc { font-size: 12px; color: #8a8d99; font-variant-numeric: tabular-nums; white-space: nowrap; }
 #wc b { font-weight: 600; color: #55575f; }
 /* 底部状态条：只放字数，不抢工具栏的位置 */
@@ -458,6 +460,7 @@ img {
       <button id="saveAs" title="存成一个新文件，并关联到它（⌘⇧S）">另存为</button>
     </div>
     <div class="grp right">
+      <label id="autoBox" title="停手 1.2 秒自动写回当前关联的文件；关掉以后只有按 ⌘S 才写盘"><input type="checkbox" id="autoSave">自动保存</label>
       <span id="msg"></span>
       <span id="file" title="当前关联的本地文件"></span>
     </div>
@@ -554,7 +557,7 @@ img {
       <li><b>打开</b>：点工具栏「打开」或 ⌘O，选一个 <code>.md</code> / <code>.txt</code>。内容读进来渲染，工具栏会显示文件名.</li>
       <li><b>保存</b>：⌘S 直接写回当前关联的文件.<b>没关联文件时这个按钮是灰的</b>，不会误存到别处.</li>
       <li><b>另存为</b>：⌘⇧S 选个地址存成新文件，并关联到它；之后 ⌘S 写的就是这个新文件.<br>文件名的左边有个橙点，表示改动还没写盘.</li>
-      <li><b>自动保存</b>：一旦关联了文件，停手 1.2 秒就自动写盘，闪退也不会丢. 没关联文件时，仍存在浏览器草稿里，重开还在.</li>
+      <li><b>自动保存</b>：一旦关联了文件，停手 1.2 秒就自动写盘，闪退也不会丢. 工具栏右侧有「自动保存」勾选框，默认开着；取消勾选后只有按 ⌘S 才写盘，橙点会一直留着提醒你. 这个选择会记住，下次打开还是你上次设的. 没关联文件时仍存在浏览器草稿里，重开还在.</li>
       <li><b>记住上次的文件</b>：关掉再打开 app，会自己把上次在编的那个 <code>.md</code> 读回来，文件名、⌘S 的写入目标都在，不用再点一次「打开」。文件被移走或改名时，会提示一句并退回草稿，此时按「另存为」就能重新落地。网页版拿不到磁盘路径，所以这条只在本地 app 里有效.</li>
       <li>写盘只覆盖正文内容，<b>不改文件的其他部分</b>（这个编辑器本来就只管正文）.</li>
       <li><b>没保存就走</b>：新建、打开、关窗口之前，如果文件名前面有橙点（或这份稿子还没存成文件），会先问你「保存 / 不保存 / 取消」，不会悄悄丢稿. 自动保存生效的那 1.2 秒里点关闭，可能还是会问一次.</li>
@@ -1931,11 +1934,32 @@ window.__fsSaved = info => {
   if (pendingAfterSave) { const a = pendingAfterSave; pendingAfterSave = null; a() }
 }
 
-// 有关联文件时，停手 1.2 秒自动写盘，防闪退丢稿
+// 有关联文件时，停手 1.2 秒自动写盘，防闪退丢稿。
+// 工具栏右侧有个勾选框可以关掉它（默认开着，选择记在浏览器里）
 let autoSaveTimer = null
+let autoSaveOn = true
+try { autoSaveOn = localStorage.getItem('autosave') !== '0' } catch (e) {}
+// 勾选框跟状态对齐（默认开）
+const autoChk = document.getElementById('autoSave')
+if (autoChk) {
+  autoChk.checked = autoSaveOn
+  autoChk.onchange = e => setAutoSave(e.target.checked)
+}
+
+function setAutoSave(on, quiet) {
+  autoSaveOn = !!on
+  try { localStorage.setItem('autosave', autoSaveOn ? '1' : '0') } catch (e) {}
+  const box = document.getElementById('autoSave')
+  if (box) box.checked = autoSaveOn
+  clearTimeout(autoSaveTimer)
+  if (!quiet) say(autoSaveOn ? '已开启自动保存' : '已关闭自动保存，按 ⌘S 写盘')
+  // 刚打开时，把这段时间攒下的改动补写一次
+  if (autoSaveOn && curPath && src.value !== savedText) scheduleAutoSave()
+}
+
 function scheduleAutoSave() {
   markDirty(true)
-  if (!curPath) return
+  if (!autoSaveOn || !curPath) return
   clearTimeout(autoSaveTimer)
   autoSaveTimer = setTimeout(() => {
     const b = fsBridge()
