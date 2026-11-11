@@ -516,7 +516,7 @@ img {
       <tr><td>交叉引用</td><td><code>++定理 2.2++</code>、<code>++#beck++</code> —— 认卡片、填当前编号、加高亮（见下）</td></tr>
       <tr><td>引用名</td><td><code>:::theorem 定理（Beck）{#beck}</code> —— 末尾的 <code>{#beck}</code> 是名字，不显示，给 <code>++#beck++</code> 指路；中文名同样可以，如 <code>{#贝克定理}</code></td></tr>
       <tr><td>公式</td><td><code>$…$</code> 行内，<code>$$…$$</code> 独立成段</td></tr>
-      <tr><td>脚注式链接</td><td><code>[文字](url)</code> → 正文标 <code>文字[1]</code>，地址收到文末「参考资料」；<code>[文字](url "注释")</code> 的注释会显示成 <code>（“注释” url）</code></td></tr>
+      <tr><td>脚注式链接</td><td><code>[文字](url)</code> → 正文标 <code>文字[1]</code>，文末「参考资料」里列一条 <code>[1] 文字</code>；写成 <code>[文字](url "注释")</code> 的，条目就换成那条注释. 两种都不印网址</td></tr>
       <tr><td>行内超链接</td><td><code>[[文字]](url)</code> → 正文里直接可点的链接，不进参考资料</td></tr>
       <tr><td>加粗</td><td><code>**文字**</code> —— 额外加了 0.6px 描边，中文也能看出加粗</td></tr>
       <tr><td>删除线</td><td><code>~~文字~~</code></td></tr>
@@ -565,7 +565,7 @@ img {
 
     <h3>格式按钮</h3>
     <p>中间那一行是常用格式：<b>B</b> 加粗、<i>I</i> 斜体、<u>U</u> 下划线、<s>S</s> 删除线、H1 / H2 标题、<code>&gt;</code> 引用、<code>•</code> 无序列表、<code>&lt;/&gt;</code> 行内代码、<code>{ }</code> 代码块、<code>$</code> 行内公式、<code>$$</code> 行间公式、<code>超链接</code> 行内链接、<code>脚注</code> 文末引用、<code>图片</code> 插图.</p>
-    <p>两个链接按钮的差别：<b>超链接</b>写 <code>[[文字]](url)</code>，正文里就是可点的链接；<b>脚注</b>写 <code>[文字](url)</code>，正文标 <code>[1]</code>、地址统一收到文末「参考资料」（公众号里更保险，微信不会剥掉）. 想要注释就写成 <code>[文字](url "注释")</code>，参考资料里显示 <code>（“注释” url）</code>. 点「复制到公众号」时，正文里的行内超链接会自动临时转成脚注（编号接在参考资料后面），源文件和预览都不变.</p>
+    <p>两个链接按钮的差别：<b>超链接</b>写 <code>[[文字]](url)</code>，正文里就是可点的链接；<b>脚注</b>写 <code>[文字](url)</code>，正文标 <code>[1]</code>、文末「参考资料」列一条；想要的是文献出处而不是网址，就写成 <code>[文字](url "注释")</code>，条目直接用那条注释. 两种都不印网址（公众号里链接本来也点不了）. 点「复制到公众号」时，正文里的行内超链接会自动临时转成脚注（编号接在参考资料后面），源文件和预览都不变.</p>
     <p>记号已经套着时再点一次就取消；没有选区就直接插入，光标停在中间，接着打字即可. 引用和列表按行处理，选中几行就加几行.</p>
 
     <h3>快捷键</h3>
@@ -1141,13 +1141,15 @@ function footnotes(root = view) {
     a.removeAttribute('title')
     a.classList.add('inline-link')     // 行内超链接：留在正文里，不进参考资料
   })
-  const as = all.filter(a => !a.classList.contains('inline-link'))
+  // 空的 []() 不算脚注：没有文字也没有注释，列出来只是一行空号
+  const as = all.filter(a => !a.classList.contains('inline-link') &&
+    ((a.textContent || '').trim() || (a.getAttribute('title') || '').trim()))
   if (!as.length) return
 
   const refs = []
   as.forEach((a, i) => {
     const n = i + 1
-    refs.push({ n: n, href: a.getAttribute('href'), note: a.getAttribute('title') || '' })
+    refs.push({ n: n, href: a.getAttribute('href'), note: a.getAttribute('title') || '', text: (a.textContent || '').trim() })
     const sup = document.createElement('sup')
     sup.setAttribute('style', 'font-size:11px;line-height:0;color:#2f8f8f;vertical-align:3px;')
     sup.textContent = '[' + n + ']'
@@ -1164,14 +1166,9 @@ function footnotes(root = view) {
   refs.forEach(r => {
     const p = document.createElement('p')
     p.setAttribute('style', 'margin:0 0 8px;font-size:14px;line-height:1.95;color:#1f1f1f;word-break:break-all;' + F)
-    // 中文地址常被编码成 %E8%90%A8…，这里解回可读的样子（解不开就原样）
-    let show = r.href
-    try { show = decodeURI(r.href) } catch {}
-    const url = '<span style="font-style:italic;color:#6f6f6f">' + esc(show) + '</span>'
-    const body = r.note
-      ? '（“' + esc(r.note) + '” ' + url + '）'
-      : '链接：' + url
-    p.innerHTML = '<span style="color:#a3a3a3">[' + r.n + ']</span>　　' + body
+    // 条目只写作者自己给的文字：有注释用注释，没注释就用链接文字.
+    // 网址不再自动补进去——公众号里点不了，印出来只是一串没有人读的字符
+    p.innerHTML = '<span style="color:#a3a3a3">[' + r.n + ']</span>　　' + esc(r.note || r.text)
     root.appendChild(p)
   })
 }
@@ -1181,39 +1178,10 @@ function footnotes(root = view) {
 function wxArticle() {
   const box = view.cloneNode(true)
   const links = [...box.querySelectorAll('a.inline-link')]
+  // 微信会剥掉 <a>，这里只把行内超链接还原成纯文字；
+  // 不再自动把它们收进文末——那会凭空多出一串没人读的网址
   if (!links.length) return box.innerHTML
-
-  const F = 'font-family:"Source Han Serif SC","Noto Serif SC","Songti SC",STSong,SimSun,serif;'
-  let h2 = [...box.querySelectorAll('h2')].find(h => h.textContent.trim() === '参考资料')
-  if (!h2) {
-    h2 = document.createElement('h2')
-    h2.setAttribute('style', 'margin:2.6em 0 1em;padding:0;border:0;font-size:20px;font-weight:bold;line-height:1.5;color:#1f1f1f;font-family:-apple-system,"PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif;')
-    h2.textContent = '参考资料'
-    box.appendChild(h2)
-  }
-
-  let n = 0
-  box.querySelectorAll('p').forEach(p => {
-    const m = /^\[(\d+)\]/.exec(p.textContent.trim())
-    if (m) n = Math.max(n, +m[1])
-  })
-
-  links.forEach(a => {
-    n++
-    const href = a.getAttribute('href') || ''
-    const sup = document.createElement('sup')
-    sup.setAttribute('style', 'font-size:11px;line-height:0;color:#2f8f8f;vertical-align:3px;')
-    sup.textContent = '[' + n + ']'
-    a.replaceWith(document.createTextNode(a.textContent), sup)
-
-    let show = href
-    try { show = decodeURI(href) } catch {}
-    const p = document.createElement('p')
-    p.setAttribute('style', 'margin:0 0 8px;font-size:14px;line-height:1.95;color:#1f1f1f;word-break:break-all;' + F)
-    p.innerHTML = '<span style="color:#a3a3a3">[' + n + ']</span>　　链接：' +
-                  '<span style="font-style:italic;color:#6f6f6f">' + esc(show) + '</span>'
-    box.appendChild(p)
-  })
+  links.forEach(a => a.replaceWith(document.createTextNode(a.textContent)))
   return box.innerHTML
 }
 
