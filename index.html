@@ -39,6 +39,20 @@ body { display: flex; flex-direction: column; font: 14px system-ui, sans-serif; 
 #wc { font-size: 12px; color: #8a8d99; font-variant-numeric: tabular-nums; white-space: nowrap; }
 #wc b { font-weight: 600; color: #55575f; }
 /* 底部状态条：只放字数，不抢工具栏的位置 */
+/* 打印 / 导出 PDF：只留正文，工具栏、源码、状态条都藏起来.
+   这只影响打印介质，屏幕上什么都不变 */
+@media print {
+  html, body { height: auto !important; background: #fff !important; }
+  #bar, #src, #find, #status, .overlay { display: none !important; }
+  main { display: block !important; }
+  #pane { overflow: visible !important; padding: 0 !important; }
+  #view { width: auto !important; max-width: none !important; margin: 0 !important;
+          padding: 0 !important; box-shadow: none !important; }
+  #view section.markdown-alert, #view .tex, #view table, #view img {
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  #view h1, #view h2, #view h3 { break-after: avoid; page-break-after: avoid; }
+}
 #status { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 14px; padding: 4px 14px; background: #fff; border-top: 1px solid #ddd; }
 #bar button, #bar label { padding: 6px 14px; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; }
 #bar button:hover, #bar label:hover { border-color: #2f6b3b; color: #2f6b3b; }
@@ -459,6 +473,7 @@ img {
       <button id="save" title="保存到已关联的文件（⌘S）">保存</button>
       <button id="saveAs" title="存成一个新文件，并关联到它（⌘⇧S）">另存为</button>
       <button id="exportHtml" title="导出成一份独立的 HTML 文件：样式、公式、图片都在里面，双击就能看">导出 HTML</button>
+      <button id="exportPdf" title="导出 A4 排好版的 PDF；公式是矢量图形，看着清楚但选不中">导出 PDF</button>
     </div>
     <div class="grp right">
       <label id="autoBox" title="停手 1.2 秒自动写回当前关联的文件；关掉以后只有按 ⌘S 才写盘"><input type="checkbox" id="autoSave">自动保存</label>
@@ -517,6 +532,7 @@ img {
       <tr><td>交叉引用</td><td><code>++定理 2.2++</code>、<code>++#beck++</code> —— 认卡片、填当前编号、加高亮（见下）</td></tr>
       <tr><td>引用名</td><td><code>:::theorem 定理（Beck）{#beck}</code> —— 末尾的 <code>{#beck}</code> 是名字，不显示，给 <code>++#beck++</code> 指路；中文名同样可以，如 <code>{#贝克定理}</code></td></tr>
       <tr><td>公式</td><td><code>$…$</code> 行内，<code>$$…$$</code> 独立成段</td></tr>
+      <tr><td>导出 PDF</td><td>按 A4 分页，页边距 2cm 左右，公式是矢量图形（放大不糊，但<b>选不中、复制不了</b>），正文文字可以选中复制</td></tr>
       <tr><td>导出 HTML</td><td>工具栏「导出 HTML」把当前文章存成一份独立网页，样式、公式、图片都在里面，双击用浏览器打开即可；打印时会自动去掉灰底和阴影</td></tr>
       <tr><td>脚注式链接</td><td><code>[文字](url)</code> → 正文标 <code>文字[1]</code>，文末「参考资料」里列一条 <code>[1] 文字</code>；写成 <code>[文字](url "注释")</code> 的，条目就换成那条注释. 两种都不印网址</td></tr>
       <tr><td>行内超链接</td><td><code>[[文字]](url)</code> → 正文里直接可点的链接，文末也编号，列一条 <code>链接：url</code></td></tr>
@@ -1220,6 +1236,33 @@ function exportHtmlString() {
     '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
     '<title>' + esc(name) + '</title>\n<style>\n' + css + '\n</style>\n</head>\n<body>\n' +
     '<div class="page">\n' + view.innerHTML + '\n</div>\n</body>\n</html>\n'
+}
+
+// PDF 版：白底、无页面留白——留白由外壳按 A4 页面设，内容宽度也由外壳给定
+function exportPdfString() {
+  const name = (curName || '未命名').replace(/\.(md|markdown|txt)$/i, '')
+  const css = [
+    'html,body{margin:0;padding:0;background:#fff}',
+    'body{-webkit-font-smoothing:antialiased}',
+    'img{max-width:100%;height:auto}',
+    'section,table,img{break-inside:avoid}'
+  ].join('\n')
+  return '<!doctype html>\n<html lang="zh-CN">\n<head>\n<meta charset="utf-8">\n' +
+    '<title>' + esc(name) + '</title>\n<style>\n' + css + '\n</style>\n</head>\n<body>\n' +
+    '<div class="page">\n' + view.innerHTML + '\n</div>\n</body>\n</html>\n'
+}
+
+function exportPdf() {
+  const name = ((curName || '未命名').replace(/\.(md|markdown|txt)$/i, '')) + '.pdf'
+  const b = fsBridge()
+  if (b) { b.postMessage({ cmd: 'savePdf', name: name, html: exportPdfString() }); return }
+  // 网页版：借系统打印对话框「另存为 PDF」
+  window.print()
+}
+
+window.__pdfSaved = info => {
+  if (!info || info.error) { say('导出失败：' + ((info && info.error) || '未知错误')); return }
+  say('已导出 ' + info.name)
 }
 
 function exportHtml() {
@@ -2062,6 +2105,7 @@ document.getElementById('wx').onclick = () => {
     n ? `里面 ${n} 个行内超链接已临时转成脚注（源文件没动）` : '')
 }
 document.getElementById('exportHtml').onclick = exportHtml
+document.getElementById('exportPdf').onclick = exportPdf
 document.getElementById('zh').onclick = () => copy(zhihu(), '知乎')
 document.getElementById('x').onclick = () => {
   const pics = (src.value.match(/!\[[^\]]*\]\(img\d+\)/g) || []).length
