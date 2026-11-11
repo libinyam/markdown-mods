@@ -2269,6 +2269,7 @@ function srcRangeFor(text, before, after, occ) {
 // 两个数都拿到，才能判断「第几处」这条线索靠不靠得住：
 // 源码里可能多几处（卡片标题、{引用名} 之类只存在于源码里），数目对不上就不用它
 function occurrenceInfo(t) {
+  if (!t) return { before: 0, total: 0 }   // 纯空格/换行的选区：不用算，也算不出来
   const count = s => {
     let n = 0, i = s.indexOf(t)
     while (i >= 0) { n++; i = s.indexOf(t, i + Math.max(1, t.length)) }
@@ -2303,7 +2304,9 @@ function syncFromView() {
   const before = ctxText(sb, r.startContainer, r.startOffset, 'before')
   const after = ctxText(eb, r.endContainer, r.endOffset, 'after')
   const picked = sel.toString()
-  const hit = srcRangeFor(picked, before, after, occurrenceInfo(collapse(picked)))
+  const t = collapse(picked)
+  if (!t) return          // 只选到空格、换行：什么都不做，别把光标甩走
+  const hit = srcRangeFor(picked, before, after, occurrenceInfo(t))
   if (!hit) return
   // 右栏选区在屏幕上的位置：左栏滚过去以后要和它齐平
   let targetY = null
