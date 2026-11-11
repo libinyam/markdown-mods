@@ -565,7 +565,7 @@ img {
 
     <h3>格式按钮</h3>
     <p>中间那一行是常用格式：<b>B</b> 加粗、<i>I</i> 斜体、<u>U</u> 下划线、<s>S</s> 删除线、H1 / H2 标题、<code>&gt;</code> 引用、<code>•</code> 无序列表、<code>&lt;/&gt;</code> 行内代码、<code>{ }</code> 代码块、<code>$</code> 行内公式、<code>$$</code> 行间公式、<code>超链接</code> 行内链接、<code>脚注</code> 文末引用、<code>图片</code> 插图.</p>
-    <p>两个链接按钮的差别：<b>超链接</b>写 <code>[[文字]](url)</code>，正文里就是可点的链接；<b>脚注</b>写 <code>[文字](url)</code>，正文标 <code>[1]</code>、文末「参考资料」列一条；想要的是文献出处而不是网址，就写成 <code>[文字](url "注释")</code>，条目直接用那条注释. 两种都不印网址（公众号里链接本来也点不了）. 点「复制到公众号」时，正文里的行内超链接会自动临时转成脚注（编号接在参考资料后面），源文件和预览都不变.</p>
+    <p>两个链接按钮的差别：<b>超链接</b>写 <code>[[文字]](url)</code>，正文里就是可点的链接；<b>脚注</b>写 <code>[文字](url)</code>，正文标 <code>[1]</code>、文末「参考资料」列一条；想要的是文献出处而不是网址，就写成 <code>[文字](url "注释")</code>，条目直接用那条注释. 两种都不印网址（公众号里链接本来也点不了）. 点「复制到公众号」时，<b>行内超链接</b>会自动临时转成脚注条目（编号接在参考资料后面，照旧带网址——微信会把链接剥掉，这是唯一的痕迹），源文件和预览都不变.</p>
     <p>记号已经套着时再点一次就取消；没有选区就直接插入，光标停在中间，接着打字即可. 引用和列表按行处理，选中几行就加几行.</p>
 
     <h3>快捷键</h3>
@@ -1178,10 +1178,39 @@ function footnotes(root = view) {
 function wxArticle() {
   const box = view.cloneNode(true)
   const links = [...box.querySelectorAll('a.inline-link')]
-  // 微信会剥掉 <a>，这里只把行内超链接还原成纯文字；
-  // 不再自动把它们收进文末——那会凭空多出一串没人读的网址
   if (!links.length) return box.innerHTML
-  links.forEach(a => a.replaceWith(document.createTextNode(a.textContent)))
+
+  const F = 'font-family:"Source Han Serif SC","Noto Serif SC","Songti SC",STSong,SimSun,serif;'
+  let h2 = [...box.querySelectorAll('h2')].find(h => h.textContent.trim() === '参考资料')
+  if (!h2) {
+    h2 = document.createElement('h2')
+    h2.setAttribute('style', 'margin:2.6em 0 1em;padding:0;border:0;font-size:20px;font-weight:bold;line-height:1.5;color:#1f1f1f;font-family:-apple-system,"PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif;')
+    h2.textContent = '参考资料'
+    box.appendChild(h2)
+  }
+
+  let n = 0
+  box.querySelectorAll('p').forEach(p => {
+    const m = /^\[(\d+)\]/.exec(p.textContent.trim())
+    if (m) n = Math.max(n, +m[1])
+  })
+
+  links.forEach(a => {
+    n++
+    const href = a.getAttribute('href') || ''
+    const sup = document.createElement('sup')
+    sup.setAttribute('style', 'font-size:11px;line-height:0;color:#2f8f8f;vertical-align:3px;')
+    sup.textContent = '[' + n + ']'
+    a.replaceWith(document.createTextNode(a.textContent), sup)
+
+    let show = href
+    try { show = decodeURI(href) } catch {}
+    const p = document.createElement('p')
+    p.setAttribute('style', 'margin:0 0 8px;font-size:14px;line-height:1.95;color:#1f1f1f;word-break:break-all;' + F)
+    p.innerHTML = '<span style="color:#a3a3a3">[' + n + ']</span>　　链接：' +
+                  '<span style="font-style:italic;color:#6f6f6f">' + esc(show) + '</span>'
+    box.appendChild(p)
+  })
   return box.innerHTML
 }
 
