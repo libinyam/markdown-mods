@@ -517,7 +517,7 @@ img {
       <tr><td>引用名</td><td><code>:::theorem 定理（Beck）{#beck}</code> —— 末尾的 <code>{#beck}</code> 是名字，不显示，给 <code>++#beck++</code> 指路；中文名同样可以，如 <code>{#贝克定理}</code></td></tr>
       <tr><td>公式</td><td><code>$…$</code> 行内，<code>$$…$$</code> 独立成段</td></tr>
       <tr><td>脚注式链接</td><td><code>[文字](url)</code> → 正文标 <code>文字[1]</code>，文末「参考资料」里列一条 <code>[1] 文字</code>；写成 <code>[文字](url "注释")</code> 的，条目就换成那条注释. 两种都不印网址</td></tr>
-      <tr><td>行内超链接</td><td><code>[[文字]](url)</code> → 正文里直接可点的链接，不进参考资料</td></tr>
+      <tr><td>行内超链接</td><td><code>[[文字]](url)</code> → 正文里直接可点的链接，文末也编号，列一条 <code>链接：url</code></td></tr>
       <tr><td>加粗</td><td><code>**文字**</code> —— 额外加了 0.6px 描边，中文也能看出加粗</td></tr>
       <tr><td>删除线</td><td><code>~~文字~~</code></td></tr>
       <tr><td>外链图片</td><td><code>![说明](https://…)</code> 或 <code>&lt;img&gt;</code>；自动限制在版心宽度内，不会撑破</td></tr>
@@ -565,7 +565,7 @@ img {
 
     <h3>格式按钮</h3>
     <p>中间那一行是常用格式：<b>B</b> 加粗、<i>I</i> 斜体、<u>U</u> 下划线、<s>S</s> 删除线、H1 / H2 标题、<code>&gt;</code> 引用、<code>•</code> 无序列表、<code>&lt;/&gt;</code> 行内代码、<code>{ }</code> 代码块、<code>$</code> 行内公式、<code>$$</code> 行间公式、<code>超链接</code> 行内链接、<code>脚注</code> 文末引用、<code>图片</code> 插图.</p>
-    <p>两个链接按钮的差别：<b>超链接</b>写 <code>[[文字]](url)</code>，正文里就是可点的链接；<b>脚注</b>写 <code>[文字](url)</code>，正文标 <code>[1]</code>、文末「参考资料」列一条；想要的是文献出处而不是网址，就写成 <code>[文字](url "注释")</code>，条目直接用那条注释. 脚注的两种写法都不印网址（公众号里链接本来也点不了）. 点「复制到公众号」时，<b>行内超链接</b>会自动临时转成脚注条目（编号接在参考资料后面，照旧带网址——微信会把链接剥掉，这是唯一的痕迹），源文件和预览都不变.</p>
+    <p>两个链接按钮的差别：<b>超链接</b>写 <code>[[文字]](url)</code>，正文里就是可点的链接；<b>脚注</b>写 <code>[文字](url)</code>，正文标 <code>[1]</code>、文末「参考资料」列一条；想要的是文献出处而不是网址，就写成 <code>[文字](url "注释")</code>，条目直接用那条注释. 脚注的两种写法都不印网址（公众号里链接本来也点不了）. 两者的编号在同一条序列上，按在正文里出现的先后排. 点「复制到公众号」时，微信不认 <a>，行内超链接会退化成纯文字，编号和文末那条「链接：url」在预览里就已经排好，复制出去一并带上.</p>
     <p>记号已经套着时再点一次就取消；没有选区就直接插入，光标停在中间，接着打字即可. 引用和列表按行处理，选中几行就加几行.</p>
 
     <h3>快捷键</h3>
@@ -1139,21 +1139,31 @@ function footnotes(root = view) {
   all.forEach(a => {
     if (a.getAttribute('title') !== 'inline') return
     a.removeAttribute('title')
-    a.classList.add('inline-link')     // 行内超链接：留在正文里，不进参考资料
+    a.classList.add('inline-link')     // 行内超链接：正文里保持可点，编号和条目一样有
   })
-  // 空的 []() 不算脚注：没有文字也没有注释，列出来只是一行空号
-  const as = all.filter(a => !a.classList.contains('inline-link') &&
-    ((a.textContent || '').trim() || (a.getAttribute('title') || '').trim()))
+  // 空壳（既没文字也没注释）跳过，列出来只是一行空号
+  const as = all.filter(a =>
+    (a.textContent || '').trim() || (a.getAttribute('title') || '').trim())
   if (!as.length) return
 
+  // 脚注和超链接共用一条编号序列，按在正文里出现的先后排
   const refs = []
   as.forEach((a, i) => {
     const n = i + 1
-    refs.push({ n: n, href: a.getAttribute('href'), note: a.getAttribute('title') || '', text: (a.textContent || '').trim() })
+    const inline = a.classList.contains('inline-link')
+    refs.push({
+      n: n,
+      href: a.getAttribute('href') || '',
+      note: a.getAttribute('title') || '',
+      text: (a.textContent || '').trim(),
+      inline: inline
+    })
     const sup = document.createElement('sup')
     sup.setAttribute('style', 'font-size:11px;line-height:0;color:#2f8f8f;vertical-align:3px;')
     sup.textContent = '[' + n + ']'
-    a.replaceWith(document.createTextNode(a.textContent), sup)
+    // 脚注：字留下、链接去掉；超链接：链接留着（还能点），编号贴在后面
+    if (inline) a.after(sup)
+    else a.replaceWith(document.createTextNode(a.textContent), sup)
   })
 
   const F = 'font-family:"Source Han Serif SC","Noto Serif SC","Songti SC",STSong,SimSun,serif;'
@@ -1166,9 +1176,17 @@ function footnotes(root = view) {
   refs.forEach(r => {
     const p = document.createElement('p')
     p.setAttribute('style', 'margin:0 0 8px;font-size:14px;line-height:1.95;color:#1f1f1f;word-break:break-all;' + F)
-    // 条目只写作者自己给的文字：有注释用注释，没注释就用链接文字.
-    // 网址不再自动补进去——公众号里点不了，印出来只是一串没有人读的字符
-    p.innerHTML = '<span style="color:#a3a3a3">[' + r.n + ']</span>　　' + esc(r.note || r.text)
+    // 超链接列「链接：网址」；脚注只写作者自己给的文字（有注释用注释，没注释用链接文字），
+    // 因为脚注本来就是为了写文献出处，再缀一串网址只是噪音
+    let body
+    if (r.inline) {
+      let show = r.href
+      try { show = decodeURI(r.href) } catch {}
+      body = '链接：<span style="font-style:italic;color:#6f6f6f">' + esc(show) + '</span>'
+    } else {
+      body = esc(r.note || r.text)
+    }
+    p.innerHTML = '<span style="color:#a3a3a3">[' + r.n + ']</span>　　' + body
     root.appendChild(p)
   })
 }
@@ -1179,40 +1197,11 @@ function wxArticle() {
   const box = view.cloneNode(true)
   const links = [...box.querySelectorAll('a.inline-link')]
   if (!links.length) return box.innerHTML
-
-  const F = 'font-family:"Source Han Serif SC","Noto Serif SC","Songti SC",STSong,SimSun,serif;'
-  let h2 = [...box.querySelectorAll('h2')].find(h => h.textContent.trim() === '参考资料')
-  if (!h2) {
-    h2 = document.createElement('h2')
-    h2.setAttribute('style', 'margin:2.6em 0 1em;padding:0;border:0;font-size:20px;font-weight:bold;line-height:1.5;color:#1f1f1f;font-family:-apple-system,"PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif;')
-    h2.textContent = '参考资料'
-    box.appendChild(h2)
-  }
-
-  let n = 0
-  box.querySelectorAll('p').forEach(p => {
-    const m = /^\[(\d+)\]/.exec(p.textContent.trim())
-    if (m) n = Math.max(n, +m[1])
-  })
-
-  links.forEach(a => {
-    n++
-    const href = a.getAttribute('href') || ''
-    const sup = document.createElement('sup')
-    sup.setAttribute('style', 'font-size:11px;line-height:0;color:#2f8f8f;vertical-align:3px;')
-    sup.textContent = '[' + n + ']'
-    a.replaceWith(document.createTextNode(a.textContent), sup)
-
-    let show = href
-    try { show = decodeURI(href) } catch {}
-    const p = document.createElement('p')
-    p.setAttribute('style', 'margin:0 0 8px;font-size:14px;line-height:1.95;color:#1f1f1f;word-break:break-all;' + F)
-    p.innerHTML = '<span style="color:#a3a3a3">[' + n + ']</span>　　链接：' +
-                  '<span style="font-style:italic;color:#6f6f6f">' + esc(show) + '</span>'
-    box.appendChild(p)
-  })
+  // 编号和文末条目在预览里就排好了，微信只是不认 <a>，把链接换成纯文字即可
+  links.forEach(a => a.replaceWith(document.createTextNode(a.textContent)))
   return box.innerHTML
 }
+
 
 // 把一份源码画进任意容器：预览区用它，示例面板也用它（同一套公式/编号/脚注/主题内联）
 function paint(root, text) {
