@@ -458,6 +458,7 @@ img {
       <button id="open" title="打开本地 Markdown 文件（⌘O）">打开</button>
       <button id="save" title="保存到已关联的文件（⌘S）">保存</button>
       <button id="saveAs" title="存成一个新文件，并关联到它（⌘⇧S）">另存为</button>
+      <button id="exportHtml" title="导出成一份独立的 HTML 文件：样式、公式、图片都在里面，双击就能看">导出 HTML</button>
     </div>
     <div class="grp right">
       <label id="autoBox" title="停手 1.2 秒自动写回当前关联的文件；关掉以后只有按 ⌘S 才写盘"><input type="checkbox" id="autoSave">自动保存</label>
@@ -516,6 +517,7 @@ img {
       <tr><td>交叉引用</td><td><code>++定理 2.2++</code>、<code>++#beck++</code> —— 认卡片、填当前编号、加高亮（见下）</td></tr>
       <tr><td>引用名</td><td><code>:::theorem 定理（Beck）{#beck}</code> —— 末尾的 <code>{#beck}</code> 是名字，不显示，给 <code>++#beck++</code> 指路；中文名同样可以，如 <code>{#贝克定理}</code></td></tr>
       <tr><td>公式</td><td><code>$…$</code> 行内，<code>$$…$$</code> 独立成段</td></tr>
+      <tr><td>导出 HTML</td><td>工具栏「导出 HTML」把当前文章存成一份独立网页，样式、公式、图片都在里面，双击用浏览器打开即可；打印时会自动去掉灰底和阴影</td></tr>
       <tr><td>脚注式链接</td><td><code>[文字](url)</code> → 正文标 <code>文字[1]</code>，文末「参考资料」里列一条 <code>[1] 文字</code>；写成 <code>[文字](url "注释")</code> 的，条目就换成那条注释. 两种都不印网址</td></tr>
       <tr><td>行内超链接</td><td><code>[[文字]](url)</code> → 正文里直接可点的链接，文末也编号，列一条 <code>链接：url</code></td></tr>
       <tr><td>加粗</td><td><code>**文字**</code> —— 额外加了 0.6px 描边，中文也能看出加粗</td></tr>
@@ -1202,6 +1204,48 @@ function wxArticle() {
   return box.innerHTML
 }
 
+
+// 导出成一份能直接双击打开的 HTML：预览里每个元素都已经把主题样式写进了 style 属性，
+// 所以只要把正文套进一个简单的文档外壳，公式（SVG）和图片（base64）都跟着走
+function exportHtmlString() {
+  const name = (curName || '未命名').replace(/\.(md|markdown|txt)$/i, '')
+  const css = [
+    'html{background:#f2f3f5}',
+    'body{margin:0;padding:32px 16px;background:#f2f3f5;-webkit-font-smoothing:antialiased}',
+    '.page{max-width:677px;margin:0 auto;padding:32px 26px;background:#fff;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.08)}',
+    'img{max-width:100%;height:auto}',
+    '@media print{html,body{background:#fff}body{padding:0}.page{box-shadow:none;max-width:none;padding:0}}'
+  ].join('\n')
+  return '<!doctype html>\n<html lang="zh-CN">\n<head>\n<meta charset="utf-8">\n' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+    '<title>' + esc(name) + '</title>\n<style>\n' + css + '\n</style>\n</head>\n<body>\n' +
+    '<div class="page">\n' + view.innerHTML + '\n</div>\n</body>\n</html>\n'
+}
+
+function exportHtml() {
+  const html = exportHtmlString()
+  const name = ((curName || '未命名').replace(/\.(md|markdown|txt)$/i, '')) + '.html'
+  const b = fsBridge()
+  if (b) { b.postMessage({ cmd: 'saveHtml', name: name, html: html }); return }
+  // 网页版：直接下载
+  try {
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = name
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 1000)
+    say('已导出 ' + name)
+  } catch (e) {
+    say('导出失败：' + e.message)
+  }
+}
+
+window.__htmlSaved = info => {
+  if (!info || info.error) { say('导出失败：' + ((info && info.error) || '未知错误')); return }
+  say('已导出 ' + info.name)
+}
 
 // 把一份源码画进任意容器：预览区用它，示例面板也用它（同一套公式/编号/脚注/主题内联）
 function paint(root, text) {
@@ -2017,6 +2061,7 @@ document.getElementById('wx').onclick = () => {
   copy(wxArticle(), '公众号',
     n ? `里面 ${n} 个行内超链接已临时转成脚注（源文件没动）` : '')
 }
+document.getElementById('exportHtml').onclick = exportHtml
 document.getElementById('zh').onclick = () => copy(zhihu(), '知乎')
 document.getElementById('x').onclick = () => {
   const pics = (src.value.match(/!\[[^\]]*\]\(img\d+\)/g) || []).length
