@@ -1620,12 +1620,26 @@ function previewElAt(pos) {
 
 function followCursor() {
   if (!followOn) return
+  const pos = src.selectionStart
   let el = null
-  try { el = previewElAt(src.selectionStart) } catch (e) { return }   // 初始化阶段 flatten 可能还没就绪
+  try { el = previewElAt(pos) } catch (e) { return }   // 初始化阶段 flatten 可能还没就绪
   if (!el) return
   const pane = document.getElementById('pane')
-  const y = el.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop
-  const target = Math.max(0, y - pane.clientHeight * 0.25)
+  const S = src.value
+  // 光标在这一段里的相对位置（0 = 段首，1 = 段尾），用它把「段内的哪一行」对上
+  let a = S.lastIndexOf('\n\n', Math.max(0, pos - 1)) + 2
+  if (a < 0) a = 0
+  let b = S.indexOf('\n\n', pos)
+  if (b < 0) b = S.length
+  const f = b > a ? Math.min(1, Math.max(0, (pos - a) / (b - a))) : 0
+  // 左边光标此刻离输入框顶部多远
+  let caretY = pane.clientHeight * 0.4
+  try { caretY = caretTop(pos) - src.scrollTop } catch (e) {}
+  caretY = Math.max(24, Math.min(pane.clientHeight - 24, caretY))
+  const blockTop = el.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop
+  const blockH = el.offsetHeight || 0
+  // 让预览里那一段的 f 处，正好落在左边光标所在的高度
+  const target = Math.max(0, blockTop + f * blockH - caretY)
   if (Math.abs(pane.scrollTop - target) > 3) pane.scrollTop = target
 }
 
