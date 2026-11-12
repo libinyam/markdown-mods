@@ -1034,6 +1034,68 @@ function headingText(el) {
     .replace(/\s+/g, ' ').trim()
 }
 
+// 引用名归一化：去掉公式、压掉空白. 名字里带 $H^2$ 时，两边都按「文字部分」比
+function normName(s) {
+  return String(s || '').replace(/\$[^$]*\$/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+// 正文里直接写 {名字} 也认：把它换成 ++#名字++，交给后面的引用解析.
+// 只换「同文档里 {#名字} 声明过」的，且跳过公式、代码、::: 那行、**标题**{声明} 这几种
+function convertBareRefs(text) {
+  const declared = new Set()
+  const add = n => { const v = normName(n); if (v) declared.add(v) }
+  // 三种声明：::: 标题里的 {#名字}、标题行末尾的 {名字}（不带 #）、**标题**{名字}
+  let md
+  const reD = /\{#([^{}\n]+)\}/g
+  while ((md = reD.exec(text))) add(md[1])
+  const reH = /^#{1,6}[^\n]*?\{([^{}\n]+)\}\s*$/gm
+  while ((md = reH.exec(text))) if (!md[1].startsWith('#')) add(md[1])
+  const reB = /\*\*[^*\n]+\*\*\s*\{([^{}\n]+)\}/g
+  while ((md = reB.exec(text))) if (!md[1].startsWith('#')) add(md[1])
+  if (!declared.size) return text
+
+  let out = '', i = 0, mathTo = -1
+  while (i < text.length) {
+    const c = text[i]
+    if (i >= mathTo) {                      // 只有不在公式里时才认花括号
+      if (c === '$') {
+        const dbl = text[i + 1] === '$'
+        const end = dbl ? text.indexOf('$$', i + 2) : text.indexOf('$', i + 1)
+        if (end > i) { mathTo = end + (dbl ? 2 : 1); out += text.slice(i, mathTo); i = mathTo; continue }
+      }
+      if (c === '{') {
+        const close = text.indexOf('}', i)
+        const lineStart = text.lastIndexOf('\n', i) + 1
+        const isDirective = text.slice(lineStart, lineStart + 3) === ':::'
+        const isDecl = text.slice(Math.max(0, i - 2), i) === '**'
+        const lineEnd = text.indexOf('\n', i) < 0 ? text.length : text.indexOf('\n', i)
+        const isHeadingLine = /^#{1,6}\s/.test(text.slice(lineStart, lineStart + 8))
+        if (close > i && !isDirective && !isDecl && !(isHeadingLine && /^\s*$/.test(text.slice(close + 1, lineEnd)))) {
+          const name = text.slice(i + 1, close)
+          if (!name.startsWith('#') && declared.has(normName(name))) {
+            out += '++#' + name + '++'
+            i = close + 1
+            continue
+          }
+        }
+      }
+    }
+    out += c
+    i++
+  }
+  return out
+}
+
+// 把「展望 $H^2$ II」还原成 HTML（公式重新排一遍），用于引用处的显示
+function nameToHtml(name) {
+  return String(name).split(/(\$[^$]*\$)/).map(part => {
+    if (part.length > 2 && part[0] === '$' && part[part.length - 1] === '$') {
+      try { return '<span class="tex" style="margin:0 0.18em">' + svg(part.slice(1, -1), false) + '</span>' } catch (e) { return esc(part) }
+    }
+    return esc(part)
+  }).join('')
+}
+
 function numbering(root = view) {
   const hasH1 = !!root.querySelector(':scope > h1')
   let sec = 0, cnt = 0
@@ -1112,7 +1174,10 @@ const refNorm = s => s
 
 function matchRef(q, cards) {
   const raw = q.trim()
-  if (raw[0] === '#') return cards.filter(c => c.id && c.id === raw.slice(1))
+  if (raw[0] === '#') {
+    const want = normName(raw.slice(1))
+    return cards.filter(c => c.id && (c.id === raw.slice(1) || normName(c.id) === want))
+  }
 
   const nq = refNorm(raw)
   if (!nq) return []
@@ -1154,7 +1219,15 @@ function resolveRefs(root, cards, map) {
     const hits = matchRef(raw, cards)
     if (hits.length === 1) {
       const c = hits[0]
-      u.textContent = [c.type, c.num].filter(Boolean).join(' ') || c.text
+      if (c.num) u.textContent = [c.type, c.num].filter(Boolean).join(' ')
+      else if (raw[0] === '#' && u.querySelector('.tex, svg')) {
+        // 名字里自带公式，元素里已经排好了：只把开头的 # 去掉，别把公式冲掉
+        const first = u.firstChild
+        if (first && first.nodeType === 3) first.data = first.data.replace(/^(\s*)#/, '$1')
+        else u.insertBefore(document.createTextNode(''), u.firstChild)
+      } else if (raw[0] === '#') {
+        u.innerHTML = nameToHtml(raw.slice(1))
+      } else u.textContent = c.text
       return hit(u, c)
     }
     if (hits.length > 1) u.classList.add('ma-ref-amb')
@@ -1187,7 +1260,7 @@ function preprocessInlineLinks(text) {
   return text.replace(/\[\[([^\[\]\n]+)\]\]\((https?:\/\/[^)\s]*)\)/g, '[$1]($2 "inline")')
 }
 function mdParse(text) {
-  return marked.parse(preprocessInlineLinks(text))
+  return marked.parse(preprocessInlineLinks(convertBareRefs(text)))
 }
 
 // 超链接 → 脚注
