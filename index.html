@@ -530,7 +530,7 @@ img {
       <tr><td>节 / 小节</td><td><code># 标题</code> / <code>## 标题</code>，两侧图标自动添加，不用手写 svg</td></tr>
       <tr><td>显示节号</td><td><code># *3* 标题</code> —— 写 <code>*3*</code> 才把节号印在标题前；这个数字同时就是这一节的节号</td></tr>
       <tr><td>交叉引用</td><td><code>++定理 2.2++</code>、<code>++#beck++</code> —— 认卡片、填当前编号、加高亮（见下）</td></tr>
-      <tr><td>引用名</td><td><code>:::theorem 定理（Beck）{#beck}</code> —— 末尾的 <code>{#beck}</code> 是名字，不显示，给 <code>++#beck++</code> 指路；中文名同样可以，如 <code>{#贝克定理}</code></td></tr>
+      <tr><td>引用名</td><td><code>:::theorem 定理（Beck）{#beck}</code> —— 末尾的 <code>{#beck}</code> 是名字，不显示，给 <code>++#beck++</code> 指路；中文名同样可以，如 <code>{#贝克定理}</code>. <b>标题也能起名</b>：<code>## *1.2* 陈述{#stmt}</code>，正文写 <code>++#stmt++</code> 就填出「1.2」（标题没编号时填标题文字），点一下跳到那节</td></tr>
       <tr><td>公式</td><td><code>$…$</code> 行内，<code>$$…$$</code> 独立成段</td></tr>
       <tr><td>导出 PDF</td><td>按 A4 分页，页边距 2cm 左右，公式是矢量图形（放大不糊，但<b>选不中、复制不了</b>），正文文字可以选中复制</td></tr>
       <tr><td>导出 HTML</td><td>工具栏「导出 HTML」把当前文章存成一份独立网页，样式、公式、图片都在里面，双击用浏览器打开即可；打印时会自动去掉灰底和阴影</td></tr>
@@ -1000,6 +1000,35 @@ function renderGallery() {
 // 计数器：按一级标题分组，所有卡片共享一个序列，证明不占号
 // 没有一级标题的稿子保留手写编号
 // 顺手建一张卡片索引，供正文 ++…++ 反查：能认出指哪张卡，就把编号填进去
+// 标题也能起引用名：## *1.2* 陈述{#stmt}，写 {stmt} 也认. 名字不显示，只给 ++#stmt++ 指路.
+// 从标题文本末尾摘掉 {#名字}，返回名字（没写就是空串）
+function takeHeadingTag(el) {
+  const m = /\s*\{#?([\w:.\-\u4e00-\u9fa5]+)\}\s*$/.exec(el.textContent)
+  if (!m) return ''
+  let last = null
+  const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+  let n
+  while ((n = w.nextNode())) last = n
+  if (last) last.data = last.data.replace(/\s*\{#?[^{}]*\}\s*$/, '')
+  return m[1]
+}
+
+// 标题的编号：优先取 *…* 里的（# *3* 表示论），没有就看开头自己写的数字（## 3.1 陈述）
+function headingNum(el) {
+  const em = el.querySelector('em')
+  const raw = (em && em.textContent.trim()) || ''
+  if (raw && /\d/.test(raw)) return raw
+  const m = /^\s*(\d+(?:\.\d+)*)/.exec(el.textContent)
+  return m ? m[1] : ''
+}
+
+// 去掉编号后的标题文字，用来按名字认（++陈述++）
+function headingText(el) {
+  return el.textContent
+    .replace(/^\s*\d+(?:\.\d+)*[.．、:：]?\s*/, '')
+    .replace(/\s+/g, ' ').trim()
+}
+
 function numbering(root = view) {
   const hasH1 = !!root.querySelector(':scope > h1')
   let sec = 0, cnt = 0
@@ -1007,6 +1036,8 @@ function numbering(root = view) {
   const cards = []
 
   for (const el of root.children) {
+    const isHeading = el.tagName === 'H1' || el.tagName === 'H2' || el.tagName === 'H3'
+    const hid = isHeading ? takeHeadingTag(el) : ''
     if (el.tagName === 'H1') {
       if (hasH1) {
         // 手写节号优先：# 3 表示论… / # *3* 表示论… / # 3. 表示论… 都按 3 算，
@@ -1017,6 +1048,11 @@ function numbering(root = view) {
         const em = el.querySelector('em')
         if (em) em.textContent = String(sec)
       }
+      if (hid) cards.push({ el: el, id: hid, num: headingNum(el), type: '', sub: '', text: headingText(el) })
+      continue
+    }
+    if (el.tagName === 'H2' || el.tagName === 'H3') {
+      if (hid) cards.push({ el: el, id: hid, num: headingNum(el), type: '', sub: '', text: headingText(el) })
       continue
     }
     if (!el.classList.contains('markdown-alert')) continue
@@ -1113,7 +1149,7 @@ function resolveRefs(root, cards, map) {
     const hits = matchRef(raw, cards)
     if (hits.length === 1) {
       const c = hits[0]
-      u.textContent = c.num ? c.type + ' ' + c.num : c.text
+      u.textContent = [c.type, c.num].filter(Boolean).join(' ') || c.text
       return hit(u, c)
     }
     if (hits.length > 1) u.classList.add('ma-ref-amb')
