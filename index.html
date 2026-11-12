@@ -1052,7 +1052,11 @@ function convertBareRefs(text) {
   while ((md = reH.exec(text))) if (!md[1].startsWith('#')) add(md[1])
   const reB = /\*\*[^*\n]+\*\*\s*\{([^{}\n]+)\}/g
   while ((md = reB.exec(text))) if (!md[1].startsWith('#')) add(md[1])
-  if (!declared.size) return text
+  // 引用块卡片「> **题目** 正文…」没有名字，只能按类型词认：正文 {题目} → ++题目++
+  const words = new Set()
+  const reW = /^>[ \t]*\*\*([^*\n]{1,12})\*\*/gm
+  while ((md = reW.exec(text))) words.add(normName(md[1]))
+  if (!declared.size && !words.size) return text
 
   let out = '', i = 0, mathTo = -1
   while (i < text.length) {
@@ -1072,8 +1076,14 @@ function convertBareRefs(text) {
         const isHeadingLine = /^#{1,6}\s/.test(text.slice(lineStart, lineStart + 8))
         if (close > i && !isDirective && !isDecl && !(isHeadingLine && /^\s*$/.test(text.slice(close + 1, lineEnd)))) {
           const name = text.slice(i + 1, close)
-          if (!name.startsWith('#') && declared.has(normName(name))) {
+          const nm = normName(name)
+          if (!name.startsWith('#') && declared.has(nm)) {
             out += '++#' + name + '++'
+            i = close + 1
+            continue
+          }
+          if (!name.startsWith('#') && words.has(nm)) {
+            out += '++' + name + '++'
             i = close + 1
             continue
           }
@@ -1120,6 +1130,24 @@ function numbering(root = view) {
     }
     if (el.tagName === 'H2' || el.tagName === 'H3') {
       if (hid) cards.push({ el: el, id: hid, num: headingNum(el), type: '', sub: '', text: headingText(el) })
+      continue
+    }
+    // 引用块写的卡片（> **题目** 正文…）也算引用目标，只是没有编号：
+    // 正文里 ++题目++ / {题目} 就能指到它
+    if (el.tagName === 'BLOCKQUOTE') {
+      const p1 = el.querySelector(':scope > p')
+      const st = p1 && p1.firstElementChild && p1.firstElementChild.tagName === 'STRONG' ? p1.firstElementChild : null
+      if (st) {
+        let word = st.textContent.trim()
+        let bid = ''
+        const bm = /\s*\{#?([^{}\n]+)\}\s*$/.exec(word)
+        if (bm) {
+          bid = bm[1]
+          word = word.slice(0, bm.index).trim()
+          st.textContent = word
+        }
+        if (word && word.length <= 12) cards.push({ el: el, id: bid, num: '', type: word, sub: '', text: word })
+      }
       continue
     }
     if (!el.classList.contains('markdown-alert')) continue
