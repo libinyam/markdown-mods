@@ -37,6 +37,9 @@ body { display: flex; flex-direction: column; font: 14px system-ui, sans-serif; 
 #autoBox { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #666; cursor: pointer; user-select: none; white-space: nowrap; }
 #autoBox input { margin: 0; width: 13px; height: 13px; accent-color: #2f6b3b; cursor: pointer; }
 #wc { font-size: 12px; color: #8a8d99; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#follow { padding: 5px 7px; color: #6d727c; }
+#follow.on { background: #e6eefb; color: #2f5fa8; }
+#follow.on:hover { background: #dbe7f9; }
 #wc b { font-weight: 600; color: #55575f; }
 /* 底部状态条：只放字数，不抢工具栏的位置 */
 /* 打印 / 导出 PDF：只留正文，工具栏、源码、状态条都藏起来.
@@ -439,6 +442,7 @@ img {
       <input type="file" id="mdFile" accept=".md,.markdown,.txt,text/markdown,text/plain">
     </div>
     <div class="grp right">
+    <button id="follow" class="plat" title="跟随光标：右侧预览始终滚到左边光标所在的那一段"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.6C10.4 5.3 8.5 4.8 5.8 4.8a.8.8 0 0 0-.8.8v11.6c0 .45.36.8.8.8 2.6 0 4.5.5 6.2 1.8 1.7-1.3 3.6-1.8 6.2-1.8.44 0 .8-.35.8-.8V5.6a.8.8 0 0 0-.8-.8c-2.7 0-4.6.5-6.2 1.8Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 6.8v12.2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button>
     <button id="wx" class="plat" title="复制成公众号可粘贴的 HTML"><img alt="" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAARVBMVEUAwV4Az3MAznIAyG0AjT0AsFQA0nUAy2VMaXEAzXMAznIA0nYA0nUAvGYAz3MA03YAz3MA0HQA03YAznQA3HsA1HcA2HkofJh0AAAAE3RSTlMFXkwjAgeqCgD9N/DiFYnSc5u+YDsZ1AAAAAlwSFlzAAAD6AAAA+gBtXtSawAABJBJREFUWMONV1uCgyAMRCAK+H7A/Y+6E9CClrbLR7dbyRgmySQI82lpofN3rT9tE59+Zws9KuecGkXCq646AKyFW9p5sPtu+2Fbm9EY6kRt1e27ZrNH8H7n5cMR+laSof8BaCOaOYTdYkWA+CX4TWpN/wAQRm3Bn7Z5WRt8qwzpXwDayD68mSeIY5DmlwfaNN7XzCOE9wtC+g2A7fdP9tGJyXzzAP5/s78Q9CcAbdRQ99/mFZZ7OO8A7WFrxpwKcQU42Lsbwp2A8B496w/fz+06Ya3bgH/nUVcBkH/z4wDRep6kGs9iotE1rV/NB4CnA3Y/hskRlwGlFWtMLeoDB9sNgBNnUlzK2EapGPFJBFepAoAQ2EfWrMoI0lwBJVPUddUoPE5gw4y87ZKqaCWXtW3BZMMnElQHWHMMEe52jJ4CQK5z748zjnae3K0qC4BMAewn0YE5BqCm7bk809oRl00K/aI121MOIqfb6acGi2ZsNu+zOsTC7tIStSxg+4soVjdsEnIOu70VNvtwAYixBLDHajLTZ/gMLX1Os1jYcDEBgP8GH/rkwIaNxKWgL7ZwWDfkMEHjGOHyYF5Yx9v43PpeXRUbWcp8q7lE8NIkDuAAihwCv8QwxnqNbtNdQrFjLHKVX6QZgOk/Wuba+esA6dzPxeEoys3CKgE0YZ87vDXG0cKz6AB1b4vIuD4rlg04BEdogx1EgvgM7AAhhSvmjCDKfOe9nOsSKXIwpRA0/NgAtW4eIU6qTxqkTuQDi50207EPo6YvAKI8BBKGmU354ZBwepyRQ+D+M0DX4S0vAD+M56FsiDJl5NH8AtCq4HF34ipi1lrEaWI2vwKIggUwJs4aRP0zwJm73wA6Zv1FwiScfTGa4h9RvgHQOOSybcUVV+sh9/8C6PIZGGC5OOUipv8BZBsAZCHMVfQLQJZHKCi9aPgFoKH/9kXiLTN7eYbiuwfjpU1wugTICD8AujwEuBsAywxmGPoFcOl3TOXpuPfDsI6GPgKI5MEFcLRaPDpyVGwoQh3CuHUkcHAeAZlMwj1nIuvDZEyVfdH0G56Ys5w49+DTc6jAs16ZSg0Jt3mob84DliEhypaaq9ywoJejAyl0N5xW6lcmxn0QFPfmAQqTFVjLaZFOYblm2voA4YIJsuRqIFA/wZK2PQcb+MkC2aKl81DWWx7XQW98AhVNHHIIKDZP+ZysgKx1gz52jet7+mKj6nSnhvmBG5gW98Hi4lC14VUwRSdZWbEFuxzBujgf3NtN3Cib2sDO72RqXdEZz97oev+cryoD79kyYhvgoknNhwHoHaFmz9xiL/ehMET/LwBGGA77bUrnFG9ZK/i8PvCEIwoAbi9t5Zpzs1+7CNAeYWgozh9UzEh80RqOTxA4s5/SLDMd86LOSZVuQxacWIajuKvdJu5ZauKRc2klqvmcdO8AvAHTXB8O3BaL+wWGoTAsY7rKkhKsN+fscQdIl2WtGoyle7pehIC/vt9wbU3vZ0fzoifAdccWuBMs07rG4XiRSrN5vnxngO4NoH5PL6/xb5url28W9tfl/PPFP60/6IOiaRQFNO4AAAAASUVORK5CYII=">公众号</button>
     <button id="zh" class="plat" title="公式换成知乎的图片接口"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="5" fill="#0084FF"/><text x="12" y="17.5" font-size="13" font-family="PingFang SC,Helvetica,sans-serif" font-weight="600" fill="#fff" text-anchor="middle">知</text></svg>知乎</button>
     <button id="x" class="plat" title="行间公式变成「〔公式 n〕」占位：粘贴后，在右边预览里点一下公式复制它的图片，再到 X 对应位置 Ctrl+V"><svg viewBox="0 0 24 24" fill="#111" aria-hidden="true"><path d="M17.5 3h3.2l-7 8 8.2 10.8h-6.4l-5-6.5-5.7 6.5H1.6l7.5-8.6L1.2 3h6.6l4.5 6 5.2-6Zm-1.1 17.1h1.8L7.6 4.8H5.7l10.7 15.3Z"/></svg>X</button>
@@ -1477,7 +1481,8 @@ function quotesToCards(root) {
     const st = p1 && p1.firstElementChild && p1.firstElementChild.tagName === 'STRONG' ? p1.firstElementChild : null
     if (!st) return
     const word = st.textContent.trim()
-    const kind = KIND[word]
+    // 标题可能带副标题：**定理（Tannaka 对偶定理）**{Tannaka}，取括号前的类型词
+    const kind = KIND[word] || KIND[word.replace(/[（(].*$/, '').trim()]
     if (!kind || kind === 'sign') return
     const sec = document.createElement('section')
     sec.className = 'markdown-alert markdown-alert-' + kind
@@ -1485,9 +1490,20 @@ function quotesToCards(root) {
     tp.className = 'markdown-alert-title'
     const s2 = document.createElement('strong')
     s2.innerHTML = st.innerHTML
+    const qtag = takeHeadingTag(s2)      // 旧稿的 {名字} 也摘掉、当作引用名
+    if (qtag) sec.dataset.ref = qtag
     tp.appendChild(s2)
     sec.appendChild(tp)
     st.remove()
+    // 旧稿的名字写在加粗外面：**定义（代表函数）**{代表函数}
+    const head0 = p1.firstChild
+    if (head0 && head0.nodeType === 3) {
+      const nm = /^\s*\{#?([^{}\n]+)\}/.exec(head0.data)
+      if (nm) {
+        if (!sec.dataset.ref) sec.dataset.ref = nm[1]
+        head0.data = head0.data.slice(nm[0].length)
+      }
+    }
     if (!p1.textContent.trim() && !p1.querySelector('img, svg, .tex')) p1.remove()
     while (bq.firstChild) sec.appendChild(bq.firstChild)
     bq.replaceWith(sec)
@@ -1563,10 +1579,74 @@ function countStats() {
     '公式排版后是图形，不计入'
 }
 
+// ── 跟随光标：左边光标走到哪，右边就滚到对应的那一段 ──
+// 思路和「划选 → 跳源码」正好反过来：把光标处的源码下标映射到摊平文本里的位置，
+// 取一小段文字去预览里找出所在的块，再按块的绝对位置滚过去（每次都重新定位，不会越用越偏）
+let followOn = false
+try { followOn = localStorage.getItem('follow') === '1' } catch (e) {}
+
+function previewElAt(pos) {
+  const { out, map } = flatten()
+  if (!map.length) return null
+  let lo = 0, hi = map.length - 1, q = map.length - 1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (map[mid] >= pos) { q = mid; hi = mid - 1 } else lo = mid + 1
+  }
+  const blocks = [...view.querySelectorAll('p, li, h1, h2, h3, blockquote, section.markdown-alert, table')]
+  // 同一句话可能出现多次，按「在全文中的大致进度」挑最像的那个
+  const want = pos / Math.max(1, src.value.length)
+  const pick = probe => {
+    if (probe.length < 4) return null
+    const hits = []
+    blocks.forEach((el, i) => {
+      if ((el.textContent || '').replace(/\s+/g, ' ').includes(probe)) hits.push({ el, f: i / blocks.length })
+    })
+    return hits.length ? hits.reduce((a, b) => (Math.abs(b.f - want) < Math.abs(a.f - want) ? b : a)).el : null
+  }
+  for (const len of [24, 16, 10, 6]) {
+    const hit = pick(out.slice(q, q + len).trim())
+    if (hit) return hit
+  }
+  // 光标在文末时后面没字了，往回取一段
+  for (const len of [24, 16, 10, 6]) {
+    const hit = pick(out.slice(Math.max(0, q - len), q).trim())
+    if (hit) return hit
+  }
+  return null
+}
+
+function followCursor() {
+  if (!followOn) return
+  let el = null
+  try { el = previewElAt(src.selectionStart) } catch (e) { return }   // 初始化阶段 flatten 可能还没就绪
+  if (!el) return
+  const pane = document.getElementById('pane')
+  const y = el.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop
+  const target = Math.max(0, y - pane.clientHeight * 0.25)
+  if (Math.abs(pane.scrollTop - target) > 3) pane.scrollTop = target
+}
+
+let followTimer = null
+function scheduleFollow() {
+  if (!followOn) return
+  clearTimeout(followTimer)
+  followTimer = setTimeout(followCursor, 80)
+}
+
+function setFollow(on, quiet) {
+  followOn = !!on
+  try { localStorage.setItem('follow', followOn ? '1' : '0') } catch (e) {}
+  document.getElementById('follow').classList.toggle('on', followOn)
+  if (!quiet) say(followOn ? '已开启跟随光标' : '已关闭跟随光标')
+  if (followOn) followCursor()          // 刚打开时先把当前位置对齐
+}
+
 function render() {
   paint(view, src.value)
   updateNumBtn()
   countStats()
+  if (followOn) followCursor()
 }
 
 // 知乎、X 都会过滤所有样式，只保留结构；公式由 mathNode 换成各平台认的东西
@@ -2308,6 +2388,13 @@ document.getElementById('wx').onclick = () => {
   copy(wxArticle(), '公众号',
     n ? `里面 ${n} 个行内超链接已临时转成脚注（源文件没动）` : '')
 }
+document.getElementById('follow').onclick = () => setFollow(!followOn)
+src.addEventListener('keyup', scheduleFollow)
+src.addEventListener('click', scheduleFollow)
+src.addEventListener('select', scheduleFollow)
+document.addEventListener('selectionchange', () => { if (document.activeElement === src) scheduleFollow() })
+setTimeout(() => setFollow(followOn, true), 0)
+
 document.getElementById('exportHtml').onclick = exportHtml
 document.getElementById('exportPdf').onclick = exportPdf
 document.getElementById('zh').onclick = () => copy(zhihu(), '知乎')
