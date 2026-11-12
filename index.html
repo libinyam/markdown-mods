@@ -534,7 +534,7 @@ img {
       <tr><td>公式</td><td><code>$…$</code> 行内，<code>$$…$$</code> 独立成段</td></tr>
       <tr><td>导出 PDF</td><td>按 A4 分页，页边距 2cm 左右，公式是矢量图形（放大不糊，但<b>选不中、复制不了</b>），正文文字可以选中复制</td></tr>
       <tr><td>导出 HTML</td><td>工具栏「导出 HTML」把当前文章存成一份独立网页，样式、公式、图片都在里面，双击用浏览器打开即可；打印时会自动去掉灰底和阴影</td></tr>
-      <tr><td>脚注式链接</td><td><code>[文字](url)</code> → 正文标 <code>文字[1]</code>，文末「参考资料」里列一条 <code>[1] 文字</code>；写成 <code>[文字](url "注释")</code> 的，条目就换成那条注释（注释里可以用 <code>*斜体*</code> 与 <code>**加粗**</code>）. 两种都不印网址</td></tr>
+      <tr><td>脚注式链接</td><td><code>[文字](url)</code> → 正文标 <code>文字[1]</code>，文末「参考资料」里列一条 <code>[1] 文字</code>；写成 <code>[文字](url "注释")</code> 的，条目就换成那条注释（注释里可以用 <code>*斜体*</code> 与 <code>**加粗**</code>）；地址留空写成 <code>[注释]()</code> 时，正文只留编号 <code>[n]</code>，方括号里的字整段收到参考资料. 这几种都不印网址</td></tr>
       <tr><td>行内超链接</td><td><code>[[文字]](url)</code> → 正文里直接可点的链接，文末也编号，列一条 <code>链接：url</code></td></tr>
       <tr><td>加粗</td><td><code>**文字**</code> —— 额外加了 0.6px 描边，中文也能看出加粗</td></tr>
       <tr><td>删除线</td><td><code>~~文字~~</code></td></tr>
@@ -1178,10 +1178,12 @@ function footnotes(root = view) {
   const refs = []
   as.forEach((a, i) => {
     const n = i + 1
-    const inline = a.classList.contains('inline-link')
+    const href = a.getAttribute('href') || ''
+    // 地址留空的 [注释]()：方括号里写的是文献出处，正文只留编号，内容归到参考资料
+    const inline = a.classList.contains('inline-link') && !!href
     refs.push({
       n: n,
-      href: a.getAttribute('href') || '',
+      href: href,
       note: a.getAttribute('title') || '',
       text: (a.textContent || '').trim(),
       inline: inline
@@ -1189,9 +1191,11 @@ function footnotes(root = view) {
     const sup = document.createElement('sup')
     sup.setAttribute('style', 'font-size:11px;line-height:0;color:#2f8f8f;vertical-align:3px;')
     sup.textContent = '[' + n + ']'
-    // 脚注：字留下、链接去掉；超链接：链接留着（还能点），编号贴在后面
+    // 超链接：链接留着（还能点），编号贴在后面；
+    // 脚注：字留下、链接去掉；[注释]() 这种：字也去掉，正文只剩编号
     if (inline) a.after(sup)
-    else a.replaceWith(document.createTextNode(a.textContent), sup)
+    else if (href) a.replaceWith(document.createTextNode(a.textContent), sup)
+    else a.replaceWith(sup)
   })
 
   const F = 'font-family:"Source Han Serif SC","Noto Serif SC","Songti SC",STSong,SimSun,serif;'
