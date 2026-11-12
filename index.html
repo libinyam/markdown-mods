@@ -1468,8 +1468,35 @@ window.__htmlSaved = info => {
 }
 
 // 把一份源码画进任意容器：预览区用它，示例面板也用它（同一套公式/编号/脚注/主题内联）
+// 旧稿写法「> **题目** 正文…」：渲染时直接当卡片处理，和应用主题后的效果一致.
+// 只认 KIND 表里有的类型词，证明、注意这类保持引用块原样
+function quotesToCards(root) {
+  ;[...root.children].forEach(bq => {
+    if (bq.tagName !== 'BLOCKQUOTE') return
+    const p1 = bq.querySelector(':scope > p')
+    const st = p1 && p1.firstElementChild && p1.firstElementChild.tagName === 'STRONG' ? p1.firstElementChild : null
+    if (!st) return
+    const word = st.textContent.trim()
+    const kind = KIND[word]
+    if (!kind || kind === 'sign') return
+    const sec = document.createElement('section')
+    sec.className = 'markdown-alert markdown-alert-' + kind
+    const tp = document.createElement('p')
+    tp.className = 'markdown-alert-title'
+    const s2 = document.createElement('strong')
+    s2.innerHTML = st.innerHTML
+    tp.appendChild(s2)
+    sec.appendChild(tp)
+    st.remove()
+    if (!p1.textContent.trim() && !p1.querySelector('img, svg, .tex')) p1.remove()
+    while (bq.firstChild) sec.appendChild(bq.firstChild)
+    bq.replaceWith(sec)
+  })
+}
+
 function paint(root, text) {
   root.innerHTML = mdParse(text)
+  quotesToCards(root)
   useLocalImages(root)
 
   // 行内公式的两件小事，对应 xeCJK 的 \xkanjiskip 与行首禁则：
@@ -1731,7 +1758,7 @@ const KIND = {
   定理: 'theorem', 命题: 'proposition', 引理: 'lemma', 推论: 'corollary',
   结论: 'corollary', 定义: 'definition', 公理: 'axiom', 事实: 'fact',
   评注: 'remark', 注: 'remark', 例子: 'example', 例: 'example', 习题: 'example',
-  问题: 'question', 疑问: 'question', 猜想: 'question',
+  问题: 'question', 疑问: 'question', 猜想: 'question', 题目: 'question',
   // 「注意」在旧稿里是提醒性的一段话，转成黄底路标卡（:::sign），不编号
   注意: 'sign'
 }
