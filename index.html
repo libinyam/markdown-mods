@@ -1003,14 +1003,19 @@ function renderGallery() {
 // 标题也能起引用名：## *1.2* 陈述{#stmt}，写 {stmt} 也认. 名字不显示，只给 ++#stmt++ 指路.
 // 从标题文本末尾摘掉 {#名字}，返回名字（没写就是空串）
 function takeHeadingTag(el) {
-  const m = /\s*\{#?([\w:.\-\u4e00-\u9fa5]+)\}\s*$/.exec(el.textContent)
-  if (!m) return ''
-  let last = null
-  const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
-  let n
-  while ((n = w.nextNode())) last = n
-  if (last) last.data = last.data.replace(/\s*\{#?[^{}]*\}\s*$/, '')
-  return m[1]
+  // 名字里可能带空格、公式（`{#展望 $H^2$ II}`），公式在标题里已经是 <span><svg>…
+  // 所以直接在 innerHTML 上从后往前切：找到最后一个 「{#」 到结尾，整段连标签一起删掉
+  const html = el.innerHTML
+  const at = html.lastIndexOf('{#')
+  if (at >= 0 && /\}\s*$/.test(html)) {
+    const raw = html.slice(at).replace(/<[^>]*>/g, '')
+    const name = raw.replace(/^\{#/, '').replace(/\}\s*$/, '').trim()
+    if (name) { el.innerHTML = html.slice(0, at); return name }
+  }
+  // 老写法：标题末尾写 {名字}（不带 #），只认简单名字，免得把 {a,b} 这类吃掉
+  const m = /\s*\{([\w:.\-\u4e00-\u9fa5]+)\}\s*$/.exec(html)
+  if (m) { el.innerHTML = html.slice(0, m.index); return m[1] }
+  return ''
 }
 
 // 标题的编号：优先取 *…* 里的（# *3* 表示论），没有就看开头自己写的数字（## 3.1 陈述）
