@@ -534,7 +534,7 @@ img {
       <tr><td>公式</td><td><code>$…$</code> 行内，<code>$$…$$</code> 独立成段</td></tr>
       <tr><td>导出 PDF</td><td>按 A4 分页，页边距 2cm 左右，公式是矢量图形（放大不糊，但<b>选不中、复制不了</b>），正文文字可以选中复制</td></tr>
       <tr><td>导出 HTML</td><td>工具栏「导出 HTML」把当前文章存成一份独立网页，样式、公式、图片都在里面，双击用浏览器打开即可；打印时会自动去掉灰底和阴影</td></tr>
-      <tr><td>脚注式链接</td><td><code>[文字](url)</code> → 正文标 <code>文字[1]</code>，文末「参考资料」里列一条 <code>[1] 文字</code>；写成 <code>[文字](url "注释")</code> 的，条目就换成那条注释. 两种都不印网址</td></tr>
+      <tr><td>脚注式链接</td><td><code>[文字](url)</code> → 正文标 <code>文字[1]</code>，文末「参考资料」里列一条 <code>[1] 文字</code>；写成 <code>[文字](url "注释")</code> 的，条目就换成那条注释（注释里可以用 <code>*斜体*</code> 与 <code>**加粗**</code>）. 两种都不印网址</td></tr>
       <tr><td>行内超链接</td><td><code>[[文字]](url)</code> → 正文里直接可点的链接，文末也编号，列一条 <code>链接：url</code></td></tr>
       <tr><td>加粗</td><td><code>**文字**</code> —— 额外加了 0.6px 描边，中文也能看出加粗</td></tr>
       <tr><td>删除线</td><td><code>~~文字~~</code></td></tr>
@@ -1152,6 +1152,16 @@ function mdParse(text) {
 // 超链接 → 脚注
 // 微信会把 <a> 剥掉，只留下文字和一段裸 URL（就成了"博客(https://…)"那种残骸）。
 // 所以正文里只留「文字[1]」，所有地址统一收到文末的「参考资料」。
+// 注释/条目里的行内强调：*斜体*、**加粗**.
+// 条目是 footnotes() 手工拼出来的，整套主题样式内联在它之前就跑完了，
+// 所以这里直接把样式写进标签，预览和公众号都吃得住
+function noteHtml(text) {
+  let h = esc(String(text || ''))
+  h = h.replace(/\*\*([^*\n]+)\*\*/g, '<strong style="font-weight:700">$1</strong>')
+  h = h.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em style="font-style:italic">$2</em>')
+  return h
+}
+
 function footnotes(root = view) {
   const all = [...root.querySelectorAll('a[href]')]
   all.forEach(a => {
@@ -1202,7 +1212,7 @@ function footnotes(root = view) {
       try { show = decodeURI(r.href) } catch {}
       body = '链接：<span style="font-style:italic;color:#6f6f6f">' + esc(show) + '</span>'
     } else {
-      body = esc(r.note || r.text)
+      body = noteHtml(r.note || r.text)
     }
     p.innerHTML = '<span style="color:#a3a3a3">[' + r.n + ']</span>　　' + body
     root.appendChild(p)
