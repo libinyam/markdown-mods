@@ -1167,14 +1167,13 @@ function noteHtml(text) {
 // 主题样式内联之后，这里得自己把样式写进标签
 function styledInner(a) {
   const wrap = document.createElement('span')
-  wrap.appendChild(a.cloneNode(true))
+  wrap.innerHTML = a.innerHTML          // 原样搬：公式已经排成 <span class="tex"><svg>…</svg></span>
   wrap.querySelectorAll('em, i').forEach(e => e.setAttribute('style', 'font-style:italic'))
   wrap.querySelectorAll('strong, b').forEach(e => e.setAttribute('style', 'font-weight:700'))
   wrap.querySelectorAll('code').forEach(e => e.setAttribute('style', 'font-family:ui-monospace,Consolas,monospace'))
-  // 其它标签（span 之类）拆掉，只留文字，免得把主题的 class 带进参考资料
-  wrap.querySelectorAll('*').forEach(e => {
-    const t = e.tagName
-    if (t === 'EM' || t === 'STRONG' || t === 'CODE' || t === 'BR') return
+  // 只拆可能从主题带过来的裸 span（没有 svg 的那种），公式、图片一律不动
+  wrap.querySelectorAll('span:not(.tex):not(:has(svg))').forEach(e => {
+    if (e.closest('svg')) return
     e.replaceWith(...e.childNodes)
   })
   return wrap.innerHTML
