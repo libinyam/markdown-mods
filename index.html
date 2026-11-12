@@ -1162,6 +1162,24 @@ function noteHtml(text) {
   return h
 }
 
+// 链接文字里的 *斜体*、**加粗** 已经被 marked 解析成 <em>/<strong>，
+// 取 textContent 会把它们吃掉，所以直接搬 innerHTML；又因为 footnotes() 跑在
+// 主题样式内联之后，这里得自己把样式写进标签
+function styledInner(a) {
+  const wrap = document.createElement('span')
+  wrap.appendChild(a.cloneNode(true))
+  wrap.querySelectorAll('em, i').forEach(e => e.setAttribute('style', 'font-style:italic'))
+  wrap.querySelectorAll('strong, b').forEach(e => e.setAttribute('style', 'font-weight:700'))
+  wrap.querySelectorAll('code').forEach(e => e.setAttribute('style', 'font-family:ui-monospace,Consolas,monospace'))
+  // 其它标签（span 之类）拆掉，只留文字，免得把主题的 class 带进参考资料
+  wrap.querySelectorAll('*').forEach(e => {
+    const t = e.tagName
+    if (t === 'EM' || t === 'STRONG' || t === 'CODE' || t === 'BR') return
+    e.replaceWith(...e.childNodes)
+  })
+  return wrap.innerHTML
+}
+
 function footnotes(root = view) {
   const all = [...root.querySelectorAll('a[href]')]
   all.forEach(a => {
@@ -1186,6 +1204,7 @@ function footnotes(root = view) {
       href: href,
       note: a.getAttribute('title') || '',
       text: (a.textContent || '').trim(),
+      html: styledInner(a),
       inline: inline
     })
     const sup = document.createElement('sup')
@@ -1216,7 +1235,7 @@ function footnotes(root = view) {
       try { show = decodeURI(r.href) } catch {}
       body = '链接：<span style="font-style:italic;color:#6f6f6f">' + esc(show) + '</span>'
     } else {
-      body = noteHtml(r.note || r.text)
+      body = r.note ? noteHtml(r.note) : r.html
     }
     p.innerHTML = '<span style="color:#a3a3a3">[' + r.n + ']</span>　　' + body
     root.appendChild(p)
