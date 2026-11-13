@@ -540,7 +540,7 @@ img {
       <tr><td>公式</td><td><code>$…$</code> 行内，<code>$$…$$</code> 独立成段</td></tr>
       <tr><td>导出 PDF</td><td>按 A4 分页、页边距 2cm 左右；版心按网页版的 677px 排，再整体缩放，所以字号约 12pt、折行和网页版一致. 公式是矢量图形（放大不糊，但<b>选不中、复制不了</b>），正文文字可以选中复制</td></tr>
       <tr><td>导出 HTML</td><td>工具栏「导出 HTML」把当前文章存成一份独立网页，样式、公式、图片都在里面，双击用浏览器打开即可；打印时会自动去掉灰底和阴影</td></tr>
-      <tr><td>脚注式链接</td><td><code>[文字](url)</code> → 正文标 <code>文字[1]</code>，文末「参考资料」里列一条 <code>[1] 文字</code>；写成 <code>[文字](url "注释")</code> 的，条目就换成那条注释（注释里可以用 <code>*斜体*</code> 与 <code>**加粗**</code>）；地址留空写成 <code>[注释]()</code> 时，正文只留编号 <code>[n]</code>，方括号里的字整段收到参考资料. 这几种都不印网址</td></tr>
+      <tr><td>脚注式链接</td><td><code>[文字](url)</code> → 正文标 <code>文字[1]</code>，文末「参考与注释」里列一条 <code>[1] 文字</code>；写成 <code>[文字](url "注释")</code> 的，条目就换成那条注释（注释里可以用 <code>*斜体*</code> 与 <code>**加粗**</code>）；地址留空写成 <code>[注释]()</code> 时，正文只留编号 <code>[n]</code>，方括号里的字整段收到「参考与注释」. 这几种都不印网址</td></tr>
       <tr><td>行内超链接</td><td><code>[[文字]](url)</code> → 正文里直接可点的链接，文末也编号，列一条 <code>链接：url</code></td></tr>
       <tr><td>加粗</td><td><code>**文字**</code> —— 额外加了 0.6px 描边，中文也能看出加粗</td></tr>
       <tr><td>删除线</td><td><code>~~文字~~</code></td></tr>
@@ -590,7 +590,7 @@ img {
 
     <h3>格式按钮</h3>
     <p>中间那一行是常用格式：<b>B</b> 加粗、<i>I</i> 斜体、<u>U</u> 下划线、<s>S</s> 删除线、H1 / H2 标题、<code>&gt;</code> 引用、<code>•</code> 无序列表、<code>&lt;/&gt;</code> 行内代码、<code>{ }</code> 代码块、<code>$</code> 行内公式、<code>$$</code> 行间公式、<code>超链接</code> 行内链接、<code>脚注</code> 文末引用、<code>图片</code> 插图.</p>
-    <p>两个链接按钮的差别：<b>超链接</b>写 <code>[[文字]](url)</code>，正文里就是可点的链接；<b>脚注</b>写 <code>[文字](url)</code>，正文标 <code>[1]</code>、文末「参考资料」列一条；想要的是文献出处而不是网址，就写成 <code>[文字](url "注释")</code>，条目直接用那条注释. 脚注的两种写法都不印网址（公众号里链接本来也点不了）. 两者的编号在同一条序列上，按在正文里出现的先后排. 点「复制到公众号」时，微信不认 <a>，行内超链接会退化成纯文字，编号和文末那条「链接：url」在预览里就已经排好，复制出去一并带上.</p>
+    <p>两个链接按钮的差别：<b>超链接</b>写 <code>[[文字]](url)</code>，正文里就是可点的链接；<b>脚注</b>写 <code>[文字](url)</code>，正文标 <code>[1]</code>、文末「参考与注释」列一条；想要的是文献出处而不是网址，就写成 <code>[文字](url "注释")</code>，条目直接用那条注释. 脚注的两种写法都不印网址（公众号里链接本来也点不了）. 两者的编号在同一条序列上，按在正文里出现的先后排. 点「复制到公众号」时，微信不认 <a>，行内超链接会退化成纯文字，编号和文末那条「链接：url」在预览里就已经排好，复制出去一并带上.</p>
     <p>记号已经套着时再点一次就取消；没有选区就直接插入，光标停在中间，接着打字即可. 引用和列表按行处理，选中几行就加几行.</p>
 
     <h3>快捷键</h3>
@@ -1369,7 +1369,7 @@ function footnotes(root = view) {
 
   const h = document.createElement('h2')
   h.setAttribute('style', 'margin:2.6em 0 1em;padding:0;border:0;font-size:20px;font-weight:bold;line-height:1.5;color:#1f1f1f;font-family:-apple-system,"PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif;')
-  h.textContent = '参考资料'
+  h.textContent = '参考与注释'
   root.appendChild(h)
 
   refs.forEach(r => {
