@@ -1805,12 +1805,24 @@ function say(text) {
 }
 
 function copy(html, label, note) {
+  // 优先交给外壳直接写剪贴板：不依赖焦点和选区，粘过去更稳
+  const b = fsBridge()
+  if (b) {
+    b.postMessage({ cmd: 'copyRich', html: html, text: src.value })
+    say(`已复制，去${label}编辑器粘贴` + (note ? '；' + note : ''))
+    return
+  }
+  // 网页版：只能走 execCommand
+  let fired = false
   document.addEventListener('copy', e => {
+    fired = true
     e.clipboardData.setData('text/html', html)
     e.clipboardData.setData('text/plain', src.value)
     e.preventDefault()
   }, { once: true })
-  document.execCommand('copy')
+  let ok = false
+  try { ok = document.execCommand('copy') } catch (e) { ok = false }
+  if (!ok && !fired) { say('复制失败：请先点一下编辑区再试'); return }
   say(`已复制，去${label}编辑器粘贴` + (note ? '；' + note : ''))
 }
 
@@ -2403,7 +2415,7 @@ document.getElementById('conv').onclick = () => {
 document.getElementById('wx').onclick = () => {
   const n = (src.value.match(/\[\[[^\[\]\n]+\]\]\(https?:\/\/[^)\s]*\)/g) || []).length
   copy(wxArticle(), '公众号',
-    n ? `里面 ${n} 个行内超链接已临时转成脚注（源文件没动）` : '')
+    n ? `里面 ${n} 个行内超链接已改成纯文字（微信不认 <a>）` : '')
 }
 document.getElementById('follow').onclick = () => setFollow(!followOn)
 src.addEventListener('keyup', scheduleFollow)
