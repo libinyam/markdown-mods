@@ -31,7 +31,8 @@ body { display: flex; flex-direction: column; font: 14px system-ui, sans-serif; 
 #bar { position: relative; z-index: 5; }
 #bar .plat { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px 5px 8px; }
 #bar .plat svg, #bar .plat img { width: 17px; height: 17px; display: block; flex: none; }
-#file { font-size: 12px; color: #888; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#file { font-size: 12px; color: #888; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+#file:hover { color: #2f6b3b; text-decoration: underline; }
 #file.dirty::before { content: '● '; color: #d18b00; }
 #msg { font-size: 12px; color: #666; width: 104px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #autoBox { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #666; cursor: pointer; user-select: none; white-space: nowrap; }
@@ -483,7 +484,7 @@ img {
     <div class="grp right">
       <label id="autoBox" title="停手 1.2 秒自动写回当前关联的文件；关掉以后只有按 ⌘S 才写盘"><input type="checkbox" id="autoSave">自动保存</label>
       <span id="msg"></span>
-      <span id="file" title="当前关联的本地文件"></span>
+      <span id="file" title="当前关联的本地文件（点一下复制标题）"></span>
     </div>
   </div>
 </div>
@@ -582,6 +583,7 @@ img {
       <li><b>保存</b>：⌘S 直接写回当前关联的文件.<b>没关联文件时这个按钮是灰的</b>，不会误存到别处.</li>
       <li><b>另存为</b>：⌘⇧S 选个地址存成新文件，并关联到它；之后 ⌘S 写的就是这个新文件.<br>文件名的左边有个橙点，表示改动还没写盘.</li>
       <li><b>自动保存</b>：一旦关联了文件，停手 1.2 秒就自动写盘，闪退也不会丢. 工具栏右侧有「自动保存」勾选框，默认开着；取消勾选后只有按 ⌘S 才写盘，橙点会一直留着提醒你. 这个选择会记住，下次打开还是你上次设的. 没关联文件时仍存在浏览器草稿里，重开还在.</li>
+      <li><b>复制标题</b>：点一下工具栏右侧的文件名，就把文章标题（文件名去掉 <code>.md</code>）复制走，粘贴到公众号标题栏即可.</li>
       <li><b>跟随光标</b>：底部状态栏最左边有个「跟随光标」按钮，点开后右边预览会跟着左边光标走——光标在哪一行，右边对应的那一段就滚到同一高度；再点一下关闭，选择会记住.</li>
       <li><b>记住上次的文件</b>：关掉再打开 app，会自己把上次在编的那个 <code>.md</code> 读回来，文件名、⌘S 的写入目标都在，不用再点一次「打开」。文件被移走或改名时，会提示一句并退回草稿，此时按「另存为」就能重新落地。网页版拿不到磁盘路径，所以这条只在本地 app 里有效.</li>
       <li>写盘只覆盖正文内容，<b>不改文件的其他部分</b>（这个编辑器本来就只管正文）.</li>
@@ -2417,6 +2419,17 @@ document.getElementById('wx').onclick = () => {
   copy(wxArticle(), '公众号',
     n ? `里面 ${n} 个行内超链接已改成纯文字（微信不认 <a>）` : '')
 }
+// 点文件名：把文章的标题（文件名去掉扩展名）复制到剪贴板，方便贴到公众号标题栏
+document.getElementById('file').onclick = () => {
+  const name = (curName || '').trim()
+  if (!name) { say('还没有关联文件，先「另存为」或「打开」一个'); return }
+  const title = name.replace(/\.(md|markdown|txt)$/i, '')
+  const b = fsBridge()
+  if (b) b.postMessage({ cmd: 'copyText', text: title })
+  else if (navigator.clipboard) navigator.clipboard.writeText(title).catch(() => {})
+  say('已复制标题：' + title)
+}
+
 document.getElementById('follow').onclick = () => setFollow(!followOn)
 src.addEventListener('keyup', scheduleFollow)
 src.addEventListener('click', scheduleFollow)
