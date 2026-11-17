@@ -2318,8 +2318,33 @@ window.__fsOpened = info => {
     return
   }
   loadDoc(info.text, info.path, info.name)
-  if (refreshing) { refreshing = false; say('已重新载入 ' + info.name); return }
+  if (refreshing) {
+    refreshing = false
+    say('已重新载入 ' + info.name)
+    jumpToMarkAndClear()
+    return
+  }
   say(booting ? '已接上上次的文件 ' + info.name : '已打开 ' + info.name)
+}
+
+// 刷新时若文件里插了 <<<改这里>>>：滚到标记处，并从源文和磁盘里删掉标记
+function jumpToMarkAndClear() {
+  const MARK = '<<<改这里>>>'
+  if (src.value.indexOf(MARK) < 0) return
+  // 预览里找到标记所在元素并滚到中央
+  let target = null
+  const walker = document.createTreeWalker(view, NodeFilter.SHOW_TEXT)
+  let node
+  while ((node = walker.nextNode())) {
+    if (node.nodeValue.indexOf(MARK) >= 0) { target = node.parentElement; break }
+  }
+  if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  // 从源文删掉标记，再写回磁盘
+  src.value = src.value.split(MARK).join('')
+  afterEdit(src.selectionStart, src.selectionEnd)
+  const b = fsBridge()
+  if (b) b.postMessage({ cmd: 'save', text: src.value, saveAs: false })
+  say('已跳到改动处并清除标记')
 }
 window.__fsSaved = info => {
   if (!info || info.error) { say('保存失败：' + ((info && info.error) || '未知错误')); return }
@@ -2765,9 +2790,12 @@ function syncFromView() {
   const after = ctxText(eb, r.endContainer, r.endOffset, 'after')
   const picked = sel.toString()
   const t = collapse(picked)
-  if (!t) return          // 只选到空格、换行：什么都不做，别把光标甩走
+  if (t.length < 2) return   // 空格、换行这种空选区：什么都不做，别把光标甩走
   const hit = srcRangeFor(picked, before, after, occurrenceInfo(t))
   if (!hit) return
+  // 映射万一跑飞（比如同一句话在后面又出现一次），别让左边一选就是一大片：
+  // 长度对不上就把选区收成光标，只定位不选中
+  if (hit.end - hit.start > t.length * 6 + 120) hit.end = hit.start
   // 右栏选区在屏幕上的位置：左栏滚过去以后要和它齐平
   let targetY = null
   try { targetY = r.getBoundingClientRect().top } catch (e) {}
@@ -2781,11 +2809,15 @@ function syncFromView() {
   setTimeout(() => { syncing = false }, 0)
 }
 
-let syncTimer, dragging = false
-document.addEventListener('mousedown', () => { dragging = true })
-document.addEventListener('mouseup', () => {
+let syncTimer, dragging = false, dragFrom = null
+document.addEventListener('mousedown', e => { dragging = true; dragFrom = { x: e.clientX, y: e.clientY } })
+document.addEventListener('mouseup', e => {
   if (!dragging) return
   dragging = false
+  // 只是点一下（手抖几像素）就别抢左边的选区了
+  const slip = dragFrom ? Math.hypot(e.clientX - dragFrom.x, e.clientY - dragFrom.y) : 0
+  dragFrom = null
+  if (slip < 3) return
   syncFromView()
 })
 document.addEventListener('selectionchange', () => {
