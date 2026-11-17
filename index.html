@@ -69,7 +69,7 @@ body { display: flex; flex-direction: column; font: 14px system-ui, sans-serif; 
 #msg { color: #2f7d3a; }
 main { flex: 1; display: flex; min-height: 0; }
 #src { flex: 1; padding: 16px; border: 0; resize: none; outline: none; font: 14px/1.7 ui-monospace, Consolas, monospace; }
-#pane { flex: 1; overflow: auto; padding: 24px; }
+#pane { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 24px; }
 #view { width: 375px; margin: 0 auto; padding: 20px 16px; background: #fff; box-shadow: 0 2px 12px rgba(0, 0, 0, .08); }
 #view .tex { cursor: pointer; }
 #view .ma-ref-ok { cursor: pointer; }
@@ -1685,6 +1685,8 @@ function render() {
   paint(view, src.value)
   updateNumBtn()
   countStats()
+  const pane = document.getElementById('pane')
+  if (pane && pane.scrollLeft) pane.scrollLeft = 0
   if (followOn) followCursor()
 }
 
@@ -1882,7 +1884,7 @@ view.onclick = e => {
 // 点预览里认出指向的引用 → 滚到那张卡片；公众号里没有这个跳转，只是高亮文字
 view.addEventListener('click', e => {
   const r = e.target.closest && e.target.closest('.ma-ref-ok')
-  if (r && r._target) r._target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  if (r && r._target) scrollPaneToEl(r._target)
 })
 
 const KIND = {
@@ -2356,7 +2358,7 @@ function jumpToMarkAndClear() {
   while ((node = walker.nextNode())) {
     if (node.nodeValue.indexOf(MARK) >= 0) { target = node.parentElement; break }
   }
-  if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  if (target) scrollPaneToEl(target)
   // 从源文删掉标记，再写回磁盘
   src.value = src.value.split(MARK).join('')
   afterEdit(src.selectionStart, src.selectionEnd)
@@ -2885,6 +2887,16 @@ view.addEventListener('dblclick', e => {
   src.setSelectionRange(start, start + len)
   scrollSrcTo(start, e.clientY)
 })
+
+// 只把目标竖着滚到视野中间，绝不带横向位移
+// （scrollIntoView 会顺带横向滚，宽公式一出现整页就偏到右边去了）
+function scrollPaneToEl(el) {
+  const pane = document.getElementById('pane')
+  const y = el.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop
+  const target = Math.max(0, y - pane.clientHeight / 2 + el.offsetHeight / 2)
+  pane.scrollTo({ top: target, behavior: 'smooth' })
+  if (pane.scrollLeft) pane.scrollLeft = 0
+}
 
 // ── 快捷键：加粗、斜体、下划线、删除线、代码、链接、公式、标题 ──
 function afterEdit(a, b) {
