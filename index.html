@@ -71,7 +71,7 @@ main { flex: 1; display: flex; min-height: 0; }
 #src { flex: 1; padding: 16px; border: 0; resize: none; outline: none; font: 14px/1.7 ui-monospace, Consolas, monospace; }
 #pane { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 24px; }
 #view { width: 375px; margin: 0 auto; padding: 20px 16px; background: #fff; box-shadow: 0 2px 12px rgba(0, 0, 0, .08); }
-#view .tex { cursor: pointer; }
+#view .tex { cursor: pointer; -webkit-user-select: none; user-select: none; }   /* 公式不参与划选：拖过它不会把 svg 里的字带进来 */
 #view .ma-ref-ok { cursor: pointer; }
 /* 查找条：⌘F 唤出，浮在右上 */
 #find {
@@ -1619,23 +1619,26 @@ function previewElAt(pos) {
     if (map[mid] >= pos) { q = mid; hi = mid - 1 } else lo = mid + 1
   }
   const blocks = [...view.querySelectorAll('p, li, h1, h2, h3, blockquote, section.markdown-alert, table')]
+  // 公式在两侧都是「没有字」，但摊平文本里会留一个空格，预览里是直接粘在一起；
+  // 所以比对时把空白全去掉，光标走到公式旁边也不会认错段
+  const nows = s => String(s || '').replace(/\s+/g, '')
+  const blockText = blocks.map(el => nows(el.textContent))
   // 同一句话可能出现多次，按「在全文中的大致进度」挑最像的那个
   const want = pos / Math.max(1, src.value.length)
   const pick = probe => {
-    if (probe.length < 4) return null
+    const p2 = nows(probe)
+    if (p2.length < 4) return null
     const hits = []
-    blocks.forEach((el, i) => {
-      if ((el.textContent || '').replace(/\s+/g, ' ').includes(probe)) hits.push({ el, f: i / blocks.length })
-    })
+    blockText.forEach((t, i) => { if (t.includes(p2)) hits.push({ el: blocks[i], f: i / blocks.length }) })
     return hits.length ? hits.reduce((a, b) => (Math.abs(b.f - want) < Math.abs(a.f - want) ? b : a)).el : null
   }
   for (const len of [24, 16, 10, 6]) {
-    const hit = pick(out.slice(q, q + len).trim())
+    const hit = pick(out.slice(q, q + len))
     if (hit) return hit
   }
   // 光标在文末时后面没字了，往回取一段
   for (const len of [24, 16, 10, 6]) {
-    const hit = pick(out.slice(Math.max(0, q - len), q).trim())
+    const hit = pick(out.slice(Math.max(0, q - len), q))
     if (hit) return hit
   }
   return null
