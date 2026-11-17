@@ -2811,9 +2811,10 @@ function syncFromView() {
   if (t.length < 2) return   // 空格、换行这种空选区：什么都不做，别把光标甩走
   const hit = srcRangeFor(picked, before, after, occurrenceInfo(t))
   if (!hit) return
-  // 映射万一跑飞（比如同一句话在后面又出现一次），别让左边一选就是一大片：
-  // 长度对不上就把选区收成光标，只定位不选中
-  if (hit.end - hit.start > t.length * 6 + 120) hit.end = hit.start
+  // 映射跑飞（同一句话在后面又出现一次之类）一律不许：正常情况左右长度应该基本相等，
+  // 差太多就把选区收成光标，只定位不选中. 谁也不需要「一拖选中大半篇」
+  const span = hit.end - hit.start
+  if (span > t.length * 1.6 + 40 || span > 1200 || t.length > 1200) hit.end = hit.start
   // 右栏选区在屏幕上的位置：左栏滚过去以后要和它齐平
   let targetY = null
   try { targetY = r.getBoundingClientRect().top } catch (e) {}
