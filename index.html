@@ -542,7 +542,7 @@ img {
       <tr><td>公式</td><td><code>$…$</code> 行内，<code>$$…$$</code> 独立成段</td></tr>
       <tr><td>导出 PDF</td><td>按 A4 分页、页边距 2cm 左右；版心按网页版的 677px 排，再整体缩放，所以字号约 12pt、折行和网页版一致. 公式是矢量图形（放大不糊，但<b>选不中、复制不了</b>），正文文字可以选中复制</td></tr>
       <tr><td>导出 HTML</td><td>工具栏「导出 HTML」把当前文章存成一份独立网页，样式、公式、图片都在里面，双击用浏览器打开即可；打印时会自动去掉灰底和阴影</td></tr>
-      <tr><td>脚注式链接</td><td><code>[文字](url)</code> → 正文标 <code>文字[1]</code>，文末「参考与注释」里列一条 <code>[1] 文字</code>；写成 <code>[文字](url "注释")</code> 的，条目就换成那条注释（注释里可以用 <code>*斜体*</code> 与 <code>**加粗**</code>）；地址留空写成 <code>[注释]()</code> 时，正文只留编号 <code>[n]</code>，方括号里的字整段收到「参考与注释」. 这几种都不印网址</td></tr>
+      <tr><td>脚注式链接</td><td><code>[文字](注释)</code> → 正文标 <code>文字[1]</code>，文末「参考与注释」里列一条 <code>[1] 注释</code>（括号里不是网址就整段当注释；点「脚注」按钮就是插这个）；写成 <code>[文字](url "注释")</code> 的，条目就换成那条注释（注释里可以用 <code>*斜体*</code> 与 <code>**加粗**</code>）；地址留空写成 <code>[注释]()</code> 时，正文只留编号 <code>[n]</code>，方括号里的字整段收到「参考与注释」. 这几种都不印网址</td></tr>
       <tr><td>行内超链接</td><td><code>[[文字]](url)</code> → 正文里直接可点的链接，文末也编号，列一条 <code>链接：url</code></td></tr>
       <tr><td>加粗</td><td><code>**文字**</code> —— 额外加了 0.6px 描边，中文也能看出加粗</td></tr>
       <tr><td>删除线</td><td><code>~~文字~~</code></td></tr>
@@ -1298,8 +1298,20 @@ function layoutHeadings(root = view) {
 function preprocessInlineLinks(text) {
   return text.replace(/\[\[([^\[\]\n]+)\]\]\((https?:\/\/[^)\s]*)\)/g, '[$1]($2 "inline")')
 }
+// 括号里写注释时常常带空格（见 Huybrechts 第 3 章），marked 认不了裸空格，
+// 这里先改写成标准的「空地址 + 标题」形式，渲染时就当注释处理
+function protectSpaceNotes(text) {
+  return text.replace(/\]\(([^()\n]+)\)/g, (m, inner) => {
+    if (!/\s/.test(inner)) return m
+    if (/^(https?|mailto|ftp):/i.test(inner)) return m
+    if (/^<[\s\S]*>$/.test(inner)) return m
+    if (/"/.test(inner)) return m
+    return '](<> "' + inner.replace(/"/g, '\\"').replace(/\s+/g, ' ').trim() + '")'
+  })
+}
+
 function mdParse(text) {
-  return marked.parse(preprocessInlineLinks(convertBareRefs(text)))
+  return marked.parse(protectSpaceNotes(preprocessInlineLinks(convertBareRefs(text))))
 }
 
 // 超链接 → 脚注
@@ -1348,13 +1360,19 @@ function footnotes(root = view) {
   const refs = []
   as.forEach((a, i) => {
     const n = i + 1
-    const href = a.getAttribute('href') || ''
-    // 地址留空的 [注释]()：方括号里写的是文献出处，正文只留编号，内容归到参考资料
+    const dest = (a.getAttribute('href') || '').trim()
+    // 括号里是网址才算「网址」，否则整段都当注释文字：[文字](见 Huybrechts 第 3 章)
+    const isUrl = /^(https?:\/\/|mailto:|ftp:\/\/|www\.)/i.test(dest)
+    const href = isUrl ? dest : ''
+    // 括号里的中文被 marked 做了百分号编码，注释要还原成人话
+    let destNote = isUrl ? '' : dest
+    try { destNote = isUrl ? '' : decodeURIComponent(dest) } catch (e) {}
+    // 地址留空的 [注释]()：方括号里写的是文献出处，正文只留编号，内容归到参考与注释
     const inline = a.classList.contains('inline-link') && !!href
     refs.push({
       n: n,
       href: href,
-      note: a.getAttribute('title') || '',
+      note: a.getAttribute('title') || destNote,
       text: (a.textContent || '').trim(),
       html: styledInner(a),
       inline: inline
@@ -1363,9 +1381,9 @@ function footnotes(root = view) {
     sup.setAttribute('style', 'font-size:11px;line-height:0;color:#2f8f8f;vertical-align:3px;')
     sup.textContent = '[' + n + ']'
     // 超链接：链接留着（还能点），编号贴在后面；
-    // 脚注：字留下、链接去掉；[注释]() 这种：字也去掉，正文只剩编号
+    // 脚注：字留下、链接去掉；[注释]() 这种什么都没有的：字也去掉，正文只剩编号
     if (inline) a.after(sup)
-    else if (href) a.replaceWith(document.createTextNode(a.textContent), sup)
+    else if (href || destNote || (a.getAttribute('title') || '')) a.replaceWith(document.createTextNode(a.textContent), sup)
     else a.replaceWith(sup)
   })
 
@@ -2922,13 +2940,15 @@ function insertLink(inline) {
   const sel = v.slice(a, b)
   const text = sel || '文字'
   const url = 'https://'
-  const md = (inline ? '[[' : '[') + text + (inline ? ']]' : ']') + '(' + url + ')'
+  const note = '注释'
+  const inner = inline ? url : note
+  const md = (inline ? '[[' : '[') + text + (inline ? ']]' : ']') + '(' + inner + ')'
   src.setRangeText(md, a, b, 'end')
-  // 有选区：选中 https:// 让你直接粘地址；没选区：选中「文字」让你直接改标题
+  // 超链接：选中 https:// 让你直接粘地址；脚注：选中「注释」，写完就是 [选中内容](注释)
   const head = (inline ? '[[' : '[').length
   if (sel) {
     const s0 = a + head + text.length + head + 1
-    return afterEdit(s0, s0 + url.length)
+    return afterEdit(s0, s0 + inner.length)
   }
   return afterEdit(a + head, a + head + text.length)
 }
