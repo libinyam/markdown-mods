@@ -1579,7 +1579,8 @@ function paint(root, text) {
   try {
     root.querySelectorAll('.math').forEach(m => {
       if (m.dataset.display) {
-        m.outerHTML = `<section class="tex" style="margin:1em 0;text-align:center;overflow-x:auto">${svg(m.textContent, true)}</section>`
+        // 行间公式比正文略小一点（正文 16px）：MathJax 的尺寸按 ex 走，调 font-size 就整体缩
+        m.outerHTML = `<section class="tex" style="margin:0.9em 0;text-align:center;overflow-x:auto;font-size:13px">${svg(m.textContent, true)}</section>`
         return
       }
       const prev = m.previousSibling, next = m.nextSibling
