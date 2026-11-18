@@ -184,6 +184,11 @@ main { flex: 1; display: flex; min-height: 0; }
 
 <!-- 主题：与 wechat-math.css 相同。media="not all" 只解析不生效，复制前逐条写进 style 属性 -->
 <style id="theme" media="not all">
+/* 表格比正文小一号：MathJax 的尺寸用 ex 计，字号一缩公式跟着缩 */
+table { border-collapse: collapse; width: 100%; margin: 1.2em 0; font-size: 12px; line-height: 1.6; table-layout: fixed; }
+th, td { border: 1px solid #e3e4ea; padding: 5px 6px; vertical-align: top; text-align: left;
+  word-break: break-word; overflow-wrap: anywhere; }
+th { background: #f5f6f9; font-weight: 700; }
 p, li {
   font-family: "Source Han Serif SC", "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
   font-size: 16px;
@@ -1535,6 +1540,25 @@ function quotesToCards(root) {
   })
 }
 
+// 表格里的公式太大就会压到隔壁格子（MathJax 出来的是定宽 svg，不会自动缩），
+// 这里量一下格子宽度，放不下就按比例缩小——复制到公众号时这个尺寸会一起带过去
+function fitTableFormulas(root) {
+  root.querySelectorAll('table .tex').forEach(span => {
+    const svg = span.querySelector('svg')
+    const cell = span.closest('td, th')
+    if (!svg || !cell) return
+    const cs = getComputedStyle(cell)
+    const avail = cell.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0)
+    const r = svg.getBoundingClientRect()
+    if (!r.width || avail < 24) return
+    if (r.width > avail) {
+      const k = avail / r.width
+      svg.style.width = Math.floor(r.width * k) + 'px'
+      svg.style.height = Math.floor(r.height * k) + 'px'
+    }
+  })
+}
+
 function paint(root, text) {
   root.innerHTML = mdParse(text)
   quotesToCards(root)
@@ -1584,6 +1608,7 @@ function paint(root, text) {
   for (const r of rules) root.querySelectorAll(r.selectorText).forEach(el => { el.style.cssText += r.style.cssText })
   footnotes(root)
   layoutHeadings(root)
+  fitTableFormulas(root)
 }
 
 // 字数统计：按渲染后的正文算（不是源码），所以 #、**、::: 这些记号不会被当成字；
