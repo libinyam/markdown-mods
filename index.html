@@ -1545,6 +1545,21 @@ function quotesToCards(root) {
   })
 }
 
+// MathJax 出来的是按 ex（当前字号的小写字母高）给尺寸的 svg：
+// 我们自己页面里算得对，可贴到公众号后对方的字号/字体不同，ex 一换算公式就变大或变小。
+// 所以渲染完把每个公式的宽高钉成 px，复制出去跟这里看到的一模一样
+function bakeTexSizes(root) {
+  root.querySelectorAll('.tex > svg').forEach(sv => {
+    const r = sv.getBoundingClientRect()
+    if (!r.width || !r.height) return
+    sv.style.width = Math.round(r.width) + 'px'
+    sv.style.height = Math.round(r.height) + 'px'
+    // 基线也是用 ex 写的，一并换成 px，免得微信里对不齐
+    const va = getComputedStyle(sv).verticalAlign
+    if (/^-?[\d.]+px$/.test(va)) sv.style.verticalAlign = va
+  })
+}
+
 // 表格里的公式太大就会压到隔壁格子（MathJax 出来的是定宽 svg，不会自动缩），
 // 这里量一下格子宽度，放不下就按比例缩小——复制到公众号时这个尺寸会一起带过去
 function fitTableFormulas(root) {
@@ -1615,6 +1630,7 @@ function paint(root, text) {
   footnotes(root)
   layoutHeadings(root)
   fitTableFormulas(root)
+  bakeTexSizes(root)
 }
 
 // 字数统计：按渲染后的正文算（不是源码），所以 #、**、::: 这些记号不会被当成字；
