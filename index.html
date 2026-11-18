@@ -1388,7 +1388,12 @@ function footnotes(root = view) {
     // 超链接：链接留着（还能点），编号贴在后面；
     // 脚注：字留下、链接去掉；[注释]() 这种什么都没有的：字也去掉，正文只剩编号
     if (inline) a.after(sup)
-    else if (href || destNote || (a.getAttribute('title') || '')) a.replaceWith(document.createTextNode(a.textContent), sup)
+    else if (href || destNote || (a.getAttribute('title') || '')) {
+      // 把 <a> 里的内容整体搬出来（不能用 textContent：公式是 svg，会被抹掉）
+      const frag = document.createDocumentFragment()
+      while (a.firstChild) frag.appendChild(a.firstChild)
+      a.replaceWith(frag, sup)
+    }
     else a.replaceWith(sup)
   })
 
