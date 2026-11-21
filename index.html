@@ -1429,7 +1429,26 @@ function wxArticle() {
   const links = [...box.querySelectorAll('a.inline-link')]
   if (!links.length) return box.innerHTML
   // 编号和文末条目在预览里就排好了，微信只是不认 <a>，把链接换成纯文字即可
-  links.forEach(a => a.replaceWith(document.createTextNode(a.textContent)))
+  // 只脱掉 <a> 这层壳，里面的 <em>/<strong>/公式元素原样搬出来
+  //（原来用 textContent 重建，链接里的斜体、加粗、公式全被抹掉）
+  links.forEach(a => {
+    const frag = document.createDocumentFragment()
+    while (a.firstChild) frag.appendChild(a.firstChild)
+    a.replaceWith(frag)
+  })
+  // 微信对 <em>/<strong> 的默认样式不可靠（斜体常被吃掉），换成写明样式的 <span>
+  box.querySelectorAll('em').forEach(e => {
+    const sp = document.createElement('span')
+    sp.setAttribute('style', 'font-style: italic;' + (e.getAttribute('style') || ''))
+    while (e.firstChild) sp.appendChild(e.firstChild)
+    e.replaceWith(sp)
+  })
+  box.querySelectorAll('strong').forEach(e => {
+    const sp = document.createElement('span')
+    sp.setAttribute('style', 'font-weight: 700;' + (e.getAttribute('style') || ''))
+    while (e.firstChild) sp.appendChild(e.firstChild)
+    e.replaceWith(sp)
+  })
   return box.innerHTML
 }
 
